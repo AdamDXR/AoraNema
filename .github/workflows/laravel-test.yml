@@ -1,0 +1,33 @@
+name: Backend Code Check
+
+# Robot akan menyala setiap ada push ke branch main atau branch backend/
+on:
+  push:
+    branches:
+      - main
+      - 'backend/**'
+
+jobs:
+  test-laravel:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. Mengambil kode dari repository Anda
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # 2. Menyiapkan bahasa PHP
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2' # Sesuaikan dengan versi Laravel 11 Anda
+
+      # 3. Menginstal dependency Laravel
+      - name: Install Composer Dependencies
+        working-directory: ./backend
+        run: composer install --quiet --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+      # 4. (Opsional) Menjalankan tes bawaan Laravel untuk memastikan tidak ada error fatal
+      - name: Run Tests
+        working-directory: ./backend
+        run: php artisan test

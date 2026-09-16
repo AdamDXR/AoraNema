@@ -1,0 +1,28 @@
+name: Frontend Code Check
+
+on:
+  push:
+    branches:
+      - main
+      - 'frontend/**' # Hanya menyala jika ada push ke branch berawalan frontend/
+
+jobs:
+  build-frontend:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20' # Standar untuk Next.js terbaru
+
+      - name: Install NPM Dependencies
+        working-directory: ./frontend
+        run: npm install
+
+      - name: Test Build Next.js
+        working-directory: ./frontend
+        run: npm run build
