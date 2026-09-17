@@ -20,7 +20,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2' # Sesuaikan dengan versi Laravel 11 Anda
+          php-version: '8.3' # Sesuaikan dengan versi Laravel 11 Anda
 
       # 3. Menginstal dependency Laravel
       - name: Install Composer Dependencies
