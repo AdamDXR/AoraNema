@@ -34,14 +34,16 @@ jobs:
         working-directory: ./backend
         run: composer install --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
 
-      # 4. (Opsional) Menjalankan tes bawaan Laravel untuk memastikan tidak ada error fatal
-      - name: Run Tests
-        working-directory: ./backend
-        run: php artisan test
-
-      # 5. Membuat atau generate key baru
+      # 3.5 Membuat atau generate key baru
       - name: Prepare Laravel environment
         working-directory: ./backend
         run: |
           cp .env.example .env
           php artisan key:generate --force
+
+      # 4. (Opsional) Menjalankan tes bawaan Laravel untuk memastikan tidak ada error fatal
+      - name: Run Tests
+        working-directory: ./backend
+        run: php artisan test
+
+      
