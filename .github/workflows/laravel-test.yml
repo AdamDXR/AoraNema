@@ -38,3 +38,10 @@ jobs:
       - name: Run Tests
         working-directory: ./backend
         run: php artisan test
+
+      # 5. Membuat atau generate key baru
+      - name: Prepare Laravel environment
+        working-directory: ./backend
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
