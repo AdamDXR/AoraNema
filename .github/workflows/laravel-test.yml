@@ -30,7 +30,7 @@ jobs:
       # 3. Menginstal dependency Laravel
       - name: Install Composer Dependencies
         working-directory: ./backend
-        run: composer install --quiet --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+        run: composer install --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
 
       # 4. (Opsional) Menjalankan tes bawaan Laravel untuk memastikan tidak ada error fatal
       - name: Run Tests
