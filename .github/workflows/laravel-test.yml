@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-      - 'backend/**'
 
 jobs:
   test-laravel:
@@ -24,26 +23,22 @@ jobs:
           # Sesuaikan dengan versi Laravel 12 (minimal php 8.2+), 
           # file composer lock saat ini perlu minimal di php 8.4.1
 
-      # 2,5. Validasi composer.json
+      # 3. Validasi composer.json
       - name: Validate Composer files
-        working-directory: ./backend
         run: composer validate --strict
 
-      # 3. Menginstal dependency Laravel
+      # 4. Menginstal dependency Laravel
       - name: Install Composer Dependencies
-        working-directory: ./backend
         run: composer install --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
 
-      # 3.5 Membuat atau generate key baru
+      # 5. Membuat atau generate key baru
       - name: Prepare Laravel environment
-        working-directory: ./backend
         run: |
           cp .env.example .env
           php artisan key:generate --force
 
-      # 4. (Opsional) Menjalankan tes bawaan Laravel untuk memastikan tidak ada error fatal
+      # 6. (Opsional) Menjalankan tes bawaan Laravel untuk memastikan tidak ada error fatal
       - name: Run Tests
-        working-directory: ./backend
         run: php artisan test
 
       
