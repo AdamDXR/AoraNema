@@ -13,6 +13,10 @@ return new class extends Migration
     {
         Schema::create('showtimes', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('movie_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('studio_id')->constrained()->cascadeOnDelete();
+            $table->dateTime('show_time');
+            $table->integer('price');
             $table->timestamps();
         });
     }
