@@ -13,7 +13,12 @@ return new class extends Migration
     {
         Schema::create('seats', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('studio_id')->constrained()->cascadeOnDelete();
+            $table->string('seat_number'); //buat nomor kursi misal A1, A2, B10
             $table->timestamps();
+
+            // ini biar memastikan gaada kursi yang ID nya sama
+            $table->unique(['studio_id','seat_number']);
         });
     }
 
