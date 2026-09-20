@@ -11,19 +11,20 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Tabel utama untuk genres
-        Schema::create('genres', function (Blueprint $table) {
+        // Dipisah dari create_genres_table supaya jalan setelah tabel movies ada.
+        Schema::create('genre_movie', function (Blueprint $table) {
             $table->id();
-            $table->string('name')->unique();
+            $table->foreignId('movie_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('genre_id')->constrained()->cascadeOnDelete();
             $table->timestamps();
         });
     }
-    
+
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        Schema::dropIfExists('genres');
+        Schema::dropIfExists('genre_movie');
     }
 };
