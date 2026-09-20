@@ -13,6 +13,14 @@ return new class extends Migration
     {
         Schema::create('user_events', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('movie_id')->constrained()->cascadeOnDelete();
+            
+            // Jenis aktivitas: 'view' (melihat detail), 'click' (klik poster), 'search'
+            $table->string('event_type'); 
+            
+            // Nilai tambahan opsional (misal jika event_type = 'rate', maka event_value = '5')
+            $table->string('event_value')->nullable(); 
             
             $table->timestamps();
         });
