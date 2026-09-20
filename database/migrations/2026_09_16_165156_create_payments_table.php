@@ -13,6 +13,14 @@ return new class extends Migration
     {
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('booking_id')->constrained()->cascadeOnDelete();
+            
+            // Kolom khusus standar Midtrans
+            $table->string('order_id')->unique(); 
+            $table->integer('gross_amount');
+            $table->string('payment_type')->nullable(); 
+            $table->string('transaction_status')->default('pending'); 
+            
             $table->timestamps();
         });
     }
