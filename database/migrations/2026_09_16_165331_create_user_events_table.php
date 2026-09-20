@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('user_events', function (Blueprint $table) {
             $table->id();
+            
             $table->timestamps();
         });
     }
