@@ -16,27 +16,19 @@
                 Aora<span class="text-nema-accent">Nema</span>
             </a>
 
-            <div class="flex items-center gap-4">
-                @auth
-                    {{-- Jika user sudah login, tampilkan nama dan tombol keluar --}}
-                    <span class="text-sm text-nema-muted hidden sm:inline">
-                        Halo, <strong class="text-nema-text">{{ Auth::user()->name }}</strong>
-                    </span>
+            <div class="flex items-center gap-1 sm:gap-3">
 
-                    <form action="{{ url('/keluar') }}" method="POST" class="inline">
-                        @csrf
-                        <button type="submit"
-                            class="inline-flex min-h-11 items-center rounded-md border border-nema-line px-4 text-sm font-medium transition-colors hover:bg-nema-surface">
-                            Keluar
-                        </button>
-                    </form>
-                @else
-                    {{-- Jika user belum login, tampilkan tombol Masuk --}}
-                    <a href="{{ url('/masuk') }}"
-                       class="inline-flex min-h-11 items-center rounded-md bg-nema-maroon px-5 font-medium text-white transition-colors hover:bg-nema-maroon-hover">
-                        Masuk
-                    </a>
-                @endauth
+                <a href="{{ url('/film') }}"
+                   @if (request()->is('film')) aria-current="page" @endif
+                   class="inline-flex min-h-11 items-center px-3 text-sm transition-colors {{ request()->is('film') ? 'text-nema-text' : 'text-nema-muted hover:text-nema-text' }}">
+                    Film
+                </a>
+
+                <a href="{{ url('/masuk') }}"
+                   class="inline-flex min-h-11 items-center rounded-md bg-nema-maroon px-5 font-medium text-white transition-colors hover:bg-nema-maroon-hover">
+                    Masuk
+                </a>
+
             </div>
 
         </div>
