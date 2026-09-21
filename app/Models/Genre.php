@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Genre extends Model
 {
-    // buat membuka izin pengisian data massal lagi dari API TMDB
+    // biar kolom 'id' gak bisa diisi sembarangan misalnya lewat form input
     protected $guarded = ['id'];
 
     // relasi ke tabel movies (Many-to-Many)

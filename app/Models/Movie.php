@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Movie extends Model
 {
-    // membuka gembok pengisian data banyak atau massal
+    // biar kolom 'id' gak bisa diisi sembarangan misalnya lewat form input
     protected $guarded = ['id'];
 
     // relasi ke tabel genre (many-to-many)
