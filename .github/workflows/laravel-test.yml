@@ -1,44 +1,52 @@
 name: Backend Code Check
 
-# Robot akan menyala setiap ada push ke branch main atau branch backend/
+# Robot menyala saat ada push ke main, dan saat ada pull request menuju main
 on:
   push:
+    branches:
+      - main
+  pull_request:
     branches:
       - main
 
 jobs:
   test-laravel:
     runs-on: ubuntu-latest
-    
+
     steps:
-      # 1. Mengambil kode dari repository Anda
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # 2. Menyiapkan bahasa PHP
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4' 
-          # Sesuaikan dengan versi Laravel 12 (minimal php 8.2+), 
-          # file composer lock saat ini perlu minimal di php 8.4.1
+          php-version: '8.4'
+          # composer.lock saat ini menuntut minimal PHP 8.4.1
 
-      # 3. Validasi composer.json
       - name: Validate Composer files
         run: composer validate --strict
 
-      # 4. Menginstal dependency Laravel
       - name: Install Composer Dependencies
         run: composer install --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
 
-      # 5. Membuat atau generate key baru
+      # Frontend ikut dibangun. Layout memanggil @vite, dan Laravel mencari
+      # public/build/manifest.json. Tanpa langkah ini, tes yang membuka halaman gagal.
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install npm Dependencies
+        run: npm ci
+
+      - name: Build Frontend
+        run: npm run build
+
       - name: Prepare Laravel environment
         run: |
           cp .env.example .env
           php artisan key:generate --force
 
-      # 6. (Opsional) Menjalankan tes bawaan Laravel untuk memastikan tidak ada error fatal
       - name: Run Tests
         run: php artisan test
-
-      
