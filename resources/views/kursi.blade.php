@@ -154,7 +154,7 @@
         </div>
     </div>
 
-    <script>
+        <script>
         (function () {
             const MAKS = {{ $jumlah }};
             const HARGA = {{ $harga }};
@@ -165,6 +165,13 @@
             const sisa = document.querySelector('[data-sisa]');
             const total = document.querySelector('[data-total]');
             const lanjut = document.querySelector('[data-lanjut]');
+
+            const dasar = @json(url('/bayar/' . $film['slug']));
+            const bawaan = {
+                layar: @json($layar),
+                jam: @json($jam),
+                tanggal: @json($tanggal->format('Y-m-d')),
+            };
 
             function rupiah(angka) {
                 return 'Rp ' + angka.toLocaleString('id-ID');
@@ -189,6 +196,13 @@
                     : 'Kursi sudah lengkap.';
 
                 lanjut.setAttribute('aria-disabled', kurang > 0 ? 'true' : 'false');
+
+                if (kurang === 0) {
+                    const isi = Object.assign({}, bawaan, { kursi: dipilih.join(',') });
+                    lanjut.href = dasar + '?' + new URLSearchParams(isi).toString();
+                } else {
+                    lanjut.removeAttribute('href');
+                }
 
                 // Kursi yang belum dipilih dimatikan begitu jatahnya habis,
                 // supaya orang tidak menekan kursi yang memang tidak bisa diambil.
