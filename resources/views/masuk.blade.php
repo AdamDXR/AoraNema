@@ -3,17 +3,38 @@
 @section('judul', 'Masuk, AoraNema')
 
 @section('konten')
-<section class="mx-auto max-w-md px-4 py-24 text-center sm:px-6">
-    <h1 class="font-display text-3xl">Masuk</h1>
+<section class="mx-auto max-w-md px-4 py-24 sm:px-6">
+    <div class="text-center">
+        <h1 class="font-display text-3xl">Masuk</h1>
+        <p class="mt-2 text-sm text-nema-muted">Silakan masuk untuk memesan tiket.</p>
+    </div>
 
-    <p class="mt-4 text-nema-muted">
-        Halaman ini belum bisa dipakai. Sistem akun belum dibangun,
-        jadi belum ada yang bisa masuk.
-    </p>
+    <form method="POST" action="{{ url('/masuk') }}" class="mt-8 space-y-5">
+        @csrf
 
-    <a href="{{ url('/') }}"
-       class="mt-8 inline-flex min-h-11 items-center rounded-md border border-nema-line px-5 transition-colors hover:bg-nema-surface">
-        Kembali ke beranda
-    </a>
+        {{-- Menampilkan pesan error jika login gagal --}}
+        @if ($errors->any())
+            <div class="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-500">
+                {{ $errors->first() }}
+            </div>
+        @endif
+
+        <div>
+            <label for="email" class="block text-sm font-medium text-nema-muted">Alamat Email</label>
+            <input type="email" name="email" id="email" required value="{{ old('email') }}"
+                class="mt-2 block w-full rounded-md border border-nema-line bg-nema-surface px-4 py-2.5 text-nema-text focus:border-nema-accent focus:outline-none focus:ring-1 focus:ring-nema-accent">
+        </div>
+
+        <div>
+            <label for="password" class="block text-sm font-medium text-nema-muted">Kata Sandi</label>
+            <input type="password" name="password" id="password" required
+                class="mt-2 block w-full rounded-md border border-nema-line bg-nema-surface px-4 py-2.5 text-nema-text focus:border-nema-accent focus:outline-none focus:ring-1 focus:ring-nema-accent">
+        </div>
+
+        <button type="submit"
+            class="mt-2 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-nema-maroon px-5 font-medium text-white transition-colors hover:bg-nema-maroon-hover">
+            Masuk
+        </button>
+    </form>
 </section>
 @endsection

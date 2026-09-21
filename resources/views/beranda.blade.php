@@ -5,10 +5,6 @@
 @section('konten')
 
     @php
-        // Data contoh dibaca dari resources/data/film.php supaya beranda dan halaman detail
-        // memakai sumber yang sama. Hapus baris require ini begitu controller mengirim datanya.
-        $semuaFilm = require resource_path('data/film.php');
-
         // Film yang belum tayang dipisahkan supaya tidak ikut muncul di bagian lain.
         // Penandanya kolom 'mulai', nanti datang dari movies.is_showing.
         $akanTayang = array_values(array_filter($semuaFilm, fn($f) => $f['mulai'] !== null));
@@ -87,8 +83,8 @@
 
                         <a href="{{ url('/film/' . $f['slug']) }}"
                            class="group block w-full max-w-xs lg:ml-auto lg:max-w-sm">
-                            @if (file_exists(public_path('img/' . $f['poster'])))
-                                <img src="{{ asset('img/' . $f['poster']) }}" alt="Poster film {{ $f['judul'] }}"
+                            @if ($f['poster'])
+                                <img src="{{ $f['poster'] }}" alt="Poster film {{ $f['judul'] }}"
                                     class="aspect-2/3 w-full rounded-xl object-cover transition-transform duration-300 group-hover:scale-[1.02]">
                             @else
                                 <div class="flex aspect-2/3 w-full items-end rounded-xl bg-nema-surface-2 p-5">
@@ -164,8 +160,8 @@
                             <li class="relative flex gap-4 border-t border-nema-line/40 py-5 lg:first:border-t-0 lg:first:pt-0">
 
                                 <div class="w-20 shrink-0 sm:w-24">
-                                    @if (file_exists(public_path('img/' . $f['poster'])))
-                                        <img src="{{ asset('img/' . $f['poster']) }}" alt="Poster film {{ $f['judul'] }}"
+                                    @if ($f['poster'])
+                                        <img src="{{ $f['poster'] }}" alt="Poster film {{ $f['judul'] }}"
                                             class="aspect-2/3 w-full rounded-lg object-cover">
                                     @else
                                         <div class="flex aspect-2/3 w-full items-end rounded-lg bg-nema-surface-2 p-2">
@@ -214,8 +210,8 @@
                             </div>
 
                             <div class="w-20 shrink-0 sm:w-24">
-                                @if (file_exists(public_path('img/' . $f['poster'])))
-                                    <img src="{{ asset('img/' . $f['poster']) }}" alt="Poster film {{ $f['judul'] }}"
+                                @if ($f['poster'])
+                                    <img src="{{ $f['poster'] }}" alt="Poster film {{ $f['judul'] }}"
                                         class="aspect-2/3 w-full rounded-lg object-cover">
                                 @else
                                     <div class="flex aspect-2/3 w-full items-end rounded-lg bg-nema-surface-2 p-2">
@@ -245,8 +241,8 @@
                     <article class="group relative">
                     <a href="{{ url('/film/' . $f['slug']) }}" class="block">
                         <div class="relative overflow-hidden rounded-lg bg-nema-surface-2">
-                            @if (file_exists(public_path('img/' . $f['poster'])))
-                                <img src="{{ asset('img/' . $f['poster']) }}" alt="Poster film {{ $f['judul'] }}"
+                            @if ($f['poster'])
+                                <img src="{{ $f['poster'] }}" alt="Poster film {{ $f['judul'] }}"
                                     class="aspect-2/3 w-full object-cover transition-transform duration-300 group-hover:scale-105">
 
                                 {{-- Kabut gelap dari dasar, supaya judul tetap terbaca di atas poster seterang apa pun. --}}
@@ -289,8 +285,8 @@
                 <article class="group relative flex gap-4 rounded-xl bg-nema-surface p-4 sm:gap-5 sm:p-5">
 
                     <div class="w-24 shrink-0 sm:w-28 lg:w-32">
-                        @if (file_exists(public_path('img/' . $f['poster'])))
-                            <img src="{{ asset('img/' . $f['poster']) }}" alt="Poster film {{ $f['judul'] }}"
+                        @if ($f['poster'])
+                            <img src="{{ $f['poster'] }}" alt="Poster film {{ $f['judul'] }}"
                                 class="aspect-2/3 w-full rounded-lg object-cover">
                         @else
                             <div class="flex aspect-2/3 w-full items-end rounded-lg bg-nema-surface-2 p-2">

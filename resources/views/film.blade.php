@@ -72,7 +72,7 @@
             }
         }
 
-        $adaPoster = file_exists(public_path('img/' . $film['poster']));
+        $adaPoster = !empty($film['poster']);
     @endphp
 
     <p class="border-b border-nema-line/40 bg-nema-surface px-4 py-3 text-center text-sm text-nema-muted sm:px-6">
@@ -96,7 +96,7 @@
 
                     <div class="w-32 shrink-0 sm:w-40 lg:w-full">
                         @if ($adaPoster)
-                            <img src="{{ asset('img/' . $film['poster']) }}" alt="Poster film {{ $film['judul'] }}"
+                            <img src="{{ $film['poster'] }}" alt="Poster film {{ $film['judul'] }}"
                                 class="aspect-2/3 w-full rounded-xl object-cover">
                         @else
                             <div class="flex aspect-2/3 w-full items-end rounded-xl bg-nema-surface-2 p-4">

@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\MovieController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BookingController;
 use Illuminate\Support\Facades\Route;
 
 // Beberapa pemeriksaan dipakai lebih dari satu halaman, jadi ditaruh sekali di sini.
@@ -99,4 +103,26 @@ Route::get('/tiket/{slug}', fn (string $slug) => $pesanan($slug, 'tiket'))
 
 Route::get('/masuk', function () {
     return view('masuk');
+});
+
+// Saat user membuka halaman awal '/', jalankan fungsi index di HomeController
+Route::get('/', [HomeController::class, 'index']);
+Route::get('/film/{slug}', [MovieController::class, 'show']);
+
+// Rute untuk tamu (belum login)
+Route::middleware('guest')->group(function () {
+    Route::get('/masuk', [AuthController::class, 'showLoginForm'])->name('login');
+    Route::post('/masuk', [AuthController::class, 'login']);
+});
+
+// Rute untuk yang sudah login
+Route::post('/keluar', [AuthController::class, 'logout'])->middleware('auth');
+
+// Rute ini hanya bisa diakses oleh pengunjung yang sudah login
+Route::middleware('auth')->group(function () {
+    // Rute logout yang sudah ada sebelumnya
+    Route::post('/keluar', [AuthController::class, 'logout']);
+    
+    // Rute baru untuk mesin pemesanan kursi
+    Route::get('/kursi/{slug}', [BookingController::class, 'pilihKursi']);
 });
