@@ -16,10 +16,20 @@
                 Aora<span class="text-nema-accent">Nema</span>
             </a>
 
-            <a href="{{ url('/masuk') }}"
-               class="inline-flex min-h-11 items-center rounded-md bg-nema-maroon px-5 font-medium text-white transition-colors hover:bg-nema-maroon-hover">
-                Masuk
-            </a>
+            <div class="flex items-center gap-1 sm:gap-3">
+
+                <a href="{{ url('/film') }}"
+                   @if (request()->is('film')) aria-current="page" @endif
+                   class="inline-flex min-h-11 items-center px-3 text-sm transition-colors {{ request()->is('film') ? 'text-nema-text' : 'text-nema-muted hover:text-nema-text' }}">
+                    Film
+                </a>
+
+                <a href="{{ url('/masuk') }}"
+                   class="inline-flex min-h-11 items-center rounded-md bg-nema-maroon px-5 font-medium text-white transition-colors hover:bg-nema-maroon-hover">
+                    Masuk
+                </a>
+
+            </div>
 
         </div>
     </header>
