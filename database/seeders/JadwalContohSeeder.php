@@ -8,15 +8,19 @@ use App\Models\Showtime;
 use App\Models\Studio;
 use Illuminate\Database\Seeder;
 
-// Jadwal uji untuk enam hari ke depan: setiap film yang sedang tayang dapat 3 sampai 5 jam
-// per hari, di format yang berbeda-beda, tanpa ada studio yang bertabrakan.
+// Jadwal uji untuk enam hari ke depan: setiap film yang sedang tayang punya format sendiri
+// (ada yang 2D saja, ada yang 2D, 3D, dan IMAX), dan tiap format dapat 3 tayangan per hari,
+// tanpa ada studio yang bertabrakan.
 // Jalankan sendiri dengan: php artisan db:seed --class=JadwalContohSeeder
 // Tidak dipanggil DatabaseSeeder, karena jadwal asli seharusnya dibuat admin.
 class JadwalContohSeeder extends Seeder
 {
     // Jumlah studio per format. Satu studio muat sekitar enam tayangan sehari, jadi 19 film
-    // dengan 3 sampai 5 tayangan butuh belasan studio, seperti bioskop besar sungguhan.
-    private const STUDIO_PER_FORMAT = ['Regular 2D' => 8, 'Regular 3D' => 3, 'IMAX' => 2];
+    // dengan 3 tayangan per format butuh belasan studio, seperti bioskop besar sungguhan.
+    private const STUDIO_PER_FORMAT = ['Regular 2D' => 8, 'Regular 3D' => 4, 'IMAX' => 4];
+
+    // Jumlah tayangan per format per hari untuk setiap film.
+    private const TAYANG_PER_FORMAT = 3;
 
     // Tidak semua film tayang di semua format. Pola ini dibagikan bergiliran ke tiap film.
     private const POLA_FORMAT = [
@@ -48,59 +52,64 @@ class JadwalContohSeeder extends Seeder
 
         $studio = Studio::orderBy('id')->get()->groupBy('format');
         $dibuat = 0;
+        $tidakMuat = 0;
 
         for ($hari = 0; $hari < 6; $hari++) {
             $tanggal = now()->startOfDay()->addDays($hari);
 
             // Waktu kosong berikutnya di tiap studio. Studio dimulai bergantian 10:00, 10:20, 10:40
-            // supaya jam tayang tidak serempak semua.
+            // supaya jam tayang tidak serempak semua. Untuk hari ini, jam yang sudah lewat dilompati
+            // supaya sisa hari tetap terisi, tidak kosong karena jatahnya habis di pagi hari.
+            $sekarang = now()->addMinutes(10 - now()->minute % 10)->startOfMinute();
             $kosong = [];
             foreach (Studio::orderBy('id')->get() as $i => $s) {
-                $kosong[$s->id] = $tanggal->copy()->setTime(10, ($i % 3) * 20);
+                $kosong[$s->id] = $tanggal->copy()->setTime(10, ($i % 3) * 20)->max($sekarang);
             }
 
-            // Film diberi satu tayangan per putaran, bergiliran. Dengan begitu tayangan satu film
-            // tersebar dari siang sampai malam, tidak menumpuk di jam yang sama.
-            for ($putaran = 0; $putaran < 5; $putaran++) {
+            // Tiap putaran, setiap format dari setiap film dapat satu tayangan, bergiliran. Dengan begitu
+            // tiga tayangan satu format tersebar dari siang sampai malam, tidak menumpuk di jam yang sama.
+            for ($putaran = 0; $putaran < self::TAYANG_PER_FORMAT; $putaran++) {
                 foreach ($film as $urut => $f) {
-                    if ($putaran >= 3 + $urut % 3) {
-                        continue;
+                    foreach (self::POLA_FORMAT[$urut % count(self::POLA_FORMAT)] as $format) {
+                        $dipakai = $studio->get($format, collect())
+                            ->sortBy(fn ($s) => [$kosong[$s->id]->timestamp, $s->id])
+                            ->first();
+
+                        if (! $dipakai) {
+                            continue;
+                        }
+
+                        $mulai = $kosong[$dipakai->id]->copy();
+                        $menit = ($f->duration_minutes ?: 120) + Showtime::JEDA_MENIT;
+                        $kosong[$dipakai->id] = $mulai->copy()->addMinutes((int) ceil($menit / 10) * 10);
+
+                        // Tayangan terakhir paling lambat mulai 21:45.
+                        if ($mulai->gt($tanggal->copy()->setTime(21, 45))) {
+                            $tidakMuat++;
+                            continue;
+                        }
+
+                        if ($mulai->isPast() || Showtime::bentrokDengan($dipakai->id, $f->id, $mulai)) {
+                            continue;
+                        }
+
+                        Showtime::create([
+                            'movie_id' => $f->id,
+                            'studio_id' => $dipakai->id,
+                            'show_time' => $mulai,
+                            'price' => $dipakai->hargaUntuk($mulai),
+                        ]);
+                        $dibuat++;
                     }
-
-                    $bolehDi = collect(self::POLA_FORMAT[$urut % count(self::POLA_FORMAT)])
-                        ->flatMap(fn ($format) => $studio->get($format, collect()));
-
-                    $dipakai = $bolehDi->sortBy(fn ($s) => [$kosong[$s->id]->timestamp, $s->id])->first();
-
-                    if (! $dipakai) {
-                        continue;
-                    }
-
-                    $mulai = $kosong[$dipakai->id]->copy();
-                    $menit = ($f->duration_minutes ?: 120) + Showtime::JEDA_MENIT;
-                    $kosong[$dipakai->id] = $mulai->copy()->addMinutes((int) ceil($menit / 10) * 10);
-
-                    // Tayangan terakhir paling lambat mulai 21:45.
-                    if ($mulai->gt($tanggal->copy()->setTime(21, 45)) || $mulai->isPast()) {
-                        continue;
-                    }
-
-                    if (Showtime::bentrokDengan($dipakai->id, $f->id, $mulai)) {
-                        continue;
-                    }
-
-                    Showtime::create([
-                        'movie_id' => $f->id,
-                        'studio_id' => $dipakai->id,
-                        'show_time' => $mulai,
-                        'price' => $dipakai->hargaUntuk($mulai),
-                    ]);
-                    $dibuat++;
                 }
             }
         }
 
         $this->command->info("SELESAI: {$studioBaru} studio ditambahkan, {$dihapus} jadwal lama dibuat ulang, {$dibuat} jadwal dibuat.");
+
+        if ($tidakMuat) {
+            $this->command->warn("{$tidakMuat} tayangan tidak muat karena studionya sudah penuh sampai malam. Tambah studio kalau perlu.");
+        }
     }
 
     // Menambah studio sampai jumlah per format terpenuhi, masing-masing 8 baris kali 10 kursi.
