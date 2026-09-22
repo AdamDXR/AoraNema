@@ -83,14 +83,14 @@
                         </div>
 
                         @if ($p['bisaDinilai'])
-                            @php $nilaiku = $penilaian[$p['movieId']] ?? null; @endphp
+                            @php $nilaiku = $penilaian[$p['kode']] ?? null; @endphp
 
                             {{-- Tiap bintang tombol kirim sendiri: satu klik langsung menyimpan,
                                  bisa dijangkau dengan Tab, dan tetap jalan tanpa JavaScript. --}}
                             <form method="post" action="{{ url('/tiket-saya/nilai') }}"
                                   class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-nema-line/40 pt-4">
                                 @csrf
-                                <input type="hidden" name="movie_id" value="{{ $p['movieId'] }}">
+                                <input type="hidden" name="kode" value="{{ $p['kode'] }}">
 
                                 <p class="text-sm">
                                     {{ $nilaiku ? 'Penilaianmu: ' . $nilaiku . ' dari 5' : 'Bagaimana filmnya?' }}

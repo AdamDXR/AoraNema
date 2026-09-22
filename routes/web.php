@@ -21,6 +21,9 @@ Route::middleware(['auth', \App\Http\Middleware\IsUser::class])->group(function 
     Route::post('/tiket-saya/nilai', [BookingController::class, 'nilaiFilm']);
 });
 
+// Pemberitahuan pembayaran dari server Midtrans. Tidak butuh login, keasliannya dicek lewat tanda tangan.
+Route::post('/midtrans/notifikasi', [BookingController::class, 'notifikasiMidtrans']);
+
 Route::middleware('auth')->group(function () {
     Route::get('/tiket/{booking_code}', [BookingController::class, 'halamanTiket']);
     Route::post('/keluar', [AuthController::class, 'logout']);

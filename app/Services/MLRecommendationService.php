@@ -27,16 +27,15 @@ class MLRecommendationService
         $interactions = [];
         $favorite_movie_ids = [];
 
-        foreach ($userEvents as $event) {
-            $movieId = $event->movie_id;
-            $interactions[$movieId] = [
+        // Penilaian disimpan per pesanan, jadi film yang ditonton dua kali bisa punya dua nilai.
+        // Nilainya dirata-rata supaya satu film tetap dikirim sekali ke layanan ML.
+        foreach ($userEvents->groupBy('movie_id') as $movieId => $nilaiFilm) {
+            $interactions[] = [
                 'movie_id' => $movieId,
-                'rating' => (float) $event->event_value
+                'rating' => round($nilaiFilm->avg(fn ($e) => (float) $e->event_value), 2),
             ];
             $favorite_movie_ids[] = $movieId;
         }
-        
-        $interactions = array_values($interactions);
         $favorite_movie_ids = array_unique($favorite_movie_ids);
 
         // 2. Tentukan Mode

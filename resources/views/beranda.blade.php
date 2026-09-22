@@ -114,40 +114,19 @@
     <div id="semua-film" class="scroll-mt-20">
 
         @if (isset($rekomendasi) && count($rekomendasi) > 0)
+            {{-- Kartu dan judul bagiannya sama dengan bagian lain di beranda, supaya rekomendasi
+                 terasa bagian dari halaman ini, bukan tempelan dengan gaya sendiri. --}}
             <section class="mx-auto max-w-7xl px-4 pt-10 sm:px-6 sm:pt-14">
                 <div class="border-t border-nema-line/40 pt-6">
-                    <h2 class="text-2xl flex items-center gap-2 sm:text-3xl text-nema-accent">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-nema-accent"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                        Rekomendasi Untukmu
-                    </h2>
+                    <h2 class="text-2xl sm:text-3xl">Rekomendasi Untukmu</h2>
                     <p class="mt-2 max-w-prose text-sm text-nema-muted">
-                        Daftar film ini dipilih secara khusus untuk Anda oleh sistem cerdas kami, berdasarkan riwayat dan genre favorit Anda.
+                        Disarankan dari film yang pernah kamu nilai, atau dari genre favorit yang kamu pilih waktu mendaftar.
                     </p>
                 </div>
 
-                <div class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-5">
+                <div class="mt-6 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 sm:gap-x-5 lg:grid-cols-5">
                     @foreach ($rekomendasi as $f)
-                        <article class="group relative">
-                            <a href="{{ url('/film/' . $f['slug']) }}" class="block">
-                                <div class="relative overflow-hidden rounded-lg border border-nema-accent/30 bg-nema-surface-2 shadow-[0_0_15px_rgba(255,215,0,0.1)] transition-shadow group-hover:shadow-[0_0_25px_rgba(255,215,0,0.2)]">
-                                    @if ($f['poster'])
-                                        <img src="{{ $f['poster'] }}" alt="Poster film {{ $f['judul'] }}"
-                                            class="aspect-2/3 w-full object-cover transition-transform duration-300 group-hover:scale-105">
-
-                                        <div class="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-black/95 via-black/70 to-transparent"></div>
-
-                                        <h3 class="absolute inset-x-0 bottom-0 p-3 text-base leading-tight text-white font-medium">
-                                            {{ $f['judul'] }}</h3>
-                                    @else
-                                        <div class="flex aspect-2/3 flex-col justify-end gap-2 p-3">
-                                            <span class="text-xs text-nema-muted">Poster belum tersedia</span>
-                                            <h3 class="text-base leading-tight">{{ $f['judul'] }}</h3>
-                                        </div>
-                                    @endif
-                                </div>
-                            </a>
-                            <p class="mt-2 text-xs text-nema-muted">{{ $f['genre'] }} &middot; {{ $f['usia'] }}</p>
-                        </article>
+                        @include('partials.kartu-film', ['f' => $f])
                     @endforeach
                 </div>
             </section>

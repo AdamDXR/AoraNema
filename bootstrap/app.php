@@ -11,7 +11,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Pemberitahuan pembayaran dikirim server Midtrans, bukan dari form di website, jadi tidak
+        // membawa token CSRF. Keasliannya dicek lewat tanda tangan di BookingController.
+        $middleware->validateCsrfTokens(except: ['midtrans/notifikasi']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
