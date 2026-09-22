@@ -70,20 +70,37 @@ class MovieController extends Controller
         // 4. Tanggal dibatasi ke enam hari yang ditampilkan di halaman, supaya parameter
         // di URL tidak bisa dipakai meminta jadwal sembarang tanggal.
         $hariIni = now()->startOfDay();
-        $tanggal = $hariIni->copy();
+        $tanggal = null;
 
-        for ($i = 1; $i < 6; $i++) {
+        for ($i = 0; $i < 6; $i++) {
             if ($hariIni->copy()->addDays($i)->format('Y-m-d') === $request->query('tanggal')) {
                 $tanggal = $hariIni->copy()->addDays($i);
             }
         }
 
+        // Semua jam tayang di enam hari itu, termasuk yang hari ini sudah lewat.
+        $semuaJam = $movie->showtimes()
+            ->whereBetween('show_time', [$hariIni, $hariIni->copy()->addDays(5)->endOfDay()])
+            ->pluck('show_time');
+
+        // Tanggal yang punya jadwal sama sekali, dan tanggal yang masih punya jam yang bisa dipesan.
+        $tanggalAda = $semuaJam->map(fn ($w) => $w->format('Y-m-d'))->unique()->sort()->values()->all();
+        $tanggalBerjadwal = $semuaJam->filter(fn ($w) => $w->isFuture())
+            ->map(fn ($w) => $w->format('Y-m-d'))->unique()->sort()->values()->all();
+
+        // Tanpa pilihan tanggal, halaman membuka hari ini selama hari ini punya jadwal, walaupun
+        // jamnya sudah lewat semua. Kalau hari ini tidak ada jadwal sama sekali, dibuka tanggal
+        // terdekat yang ada jadwalnya.
+        $tanggal ??= in_array($hariIni->format('Y-m-d'), $tanggalAda) || ! $tanggalBerjadwal
+            ? $hariIni->copy()
+            : \Illuminate\Support\Carbon::parse($tanggalBerjadwal[0]);
+
         // 5. Jadwal tayang dari tabel showtimes pada tanggal itu, dikelompokkan per format layar.
         // Beberapa studio bisa berformat sama; jam dari studio-studio itu digabung dalam satu baris.
-        // Jam yang sudah lewat tidak ditampilkan karena sudah tidak bisa dipesan.
+        // Jam yang sudah lewat tetap ditampilkan, tapi dimatikan di halaman karena tidak bisa dipesan.
         $jadwal = $movie->showtimes()
             ->with('studio')
-            ->whereBetween('show_time', [$tanggal->copy()->max(now()), $tanggal->copy()->endOfDay()])
+            ->whereBetween('show_time', [$tanggal->copy(), $tanggal->copy()->endOfDay()])
             ->orderBy('show_time')
             ->get()
             ->groupBy(fn ($s) => $s->studio->format)
@@ -91,6 +108,6 @@ class MovieController extends Controller
             // jam tayang pertama dan berpindah-pindah tiap hari.
             ->sortBy(fn ($jam, $format) => array_search($format, \App\Models\Studio::FORMAT));
 
-                return view('film', compact('film', 'tanggal', 'jadwal'));
+                return view('film', compact('film', 'tanggal', 'jadwal', 'tanggalBerjadwal'));
     }
 }

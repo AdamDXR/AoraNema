@@ -106,21 +106,46 @@
                 @else
                     <div class="no-scrollbar mt-6 flex gap-2 overflow-x-auto pb-2">
                         @foreach ($daftarTanggal as $t)
-                            @php $aktif = $t->format('Y-m-d') === $tanggal->format('Y-m-d'); @endphp
+                            @php
+                                $aktif = $t->format('Y-m-d') === $tanggal->format('Y-m-d');
+                                $kosong = ! in_array($t->format('Y-m-d'), $tanggalBerjadwal);
+                            @endphp
 
+                            {{-- Tanggal tanpa jadwal diredupkan supaya penonton tahu sebelum mengkliknya. --}}
                             <a href="{{ url('/film/' . $film['slug']) }}?tanggal={{ $t->format('Y-m-d') }}"
                                 @if ($aktif) aria-current="date" @endif
-                                class="flex min-h-11 w-20 shrink-0 flex-col items-center justify-center rounded-lg py-2 {{ $aktif ? 'border border-nema-accent bg-nema-maroon text-white' : 'border border-nema-line text-nema-muted transition-colors hover:bg-nema-surface' }}">
+                                @class([
+                                    'flex min-h-11 w-20 shrink-0 flex-col items-center justify-center rounded-lg py-2',
+                                    'border border-nema-accent bg-nema-maroon text-white' => $aktif,
+                                    'border border-nema-line text-nema-muted transition-colors hover:bg-nema-surface' => ! $aktif,
+                                    'opacity-40' => $kosong && ! $aktif,
+                                ])>
                                 <span class="text-xs">{{ $loop->first ? 'Hari ini' : $namaHari[$t->dayOfWeek] }}</span>
                                 <span class="text-lg font-semibold">{{ $t->format('j') }}</span>
+                                @if ($kosong)
+                                    <span class="sr-only">, tidak ada jadwal</span>
+                                @endif
                             </a>
                         @endforeach
                     </div>
 
+                    @php $semuaLewat = $jadwal->isNotEmpty() && $jadwal->flatten()->every(fn ($j) => $j->show_time->isPast()); @endphp
+
                     @if ($jadwal->isEmpty())
                         <div class="mt-4 rounded-xl border border-nema-line bg-nema-surface p-6">
-                            <p>Belum ada jadwal tayang di tanggal ini.</p>
-                            <p class="mt-2 text-sm text-nema-muted">Coba pilih tanggal lain di atas.</p>
+                            @php $berikutnya = collect($tanggalBerjadwal)->first(fn ($t) => $t > $tanggal->format('Y-m-d')) ?? ($tanggalBerjadwal[0] ?? null); @endphp
+
+                            <p>{{ $tanggal->isToday() ? 'Jam tayang hari ini sudah habis.' : 'Belum ada jadwal tayang di tanggal ini.' }}</p>
+
+                            @if ($berikutnya)
+                                @php $b = \Illuminate\Support\Carbon::parse($berikutnya); @endphp
+                                <a href="{{ url('/film/' . $film['slug']) }}?tanggal={{ $berikutnya }}"
+                                   class="mt-4 inline-flex min-h-11 items-center rounded-md bg-nema-maroon px-5 text-sm font-medium text-white transition-colors hover:bg-nema-maroon-hover">
+                                    Lihat jadwal {{ $b->isTomorrow() ? 'besok' : $namaHari[$b->dayOfWeek] . ' ' . $b->day }}
+                                </a>
+                            @else
+                                <p class="mt-2 text-sm text-nema-muted">Film ini belum punya jadwal dalam enam hari ke depan.</p>
+                            @endif
                         </div>
                     @else
                     <div class="mt-4 divide-y divide-nema-line/40 border-y border-nema-line/40">
@@ -137,10 +162,16 @@
 
                                 <div class="mt-3 flex flex-wrap gap-2">
                                     @foreach ($daftarJam as $j)
+                                        {{-- Jam yang sudah lewat tetap terlihat supaya jadwal hari ini utuh,
+                                             tapi dimatikan karena sudah tidak bisa dipesan. --}}
                                         <button type="button" data-jam="{{ $j->show_time->format('H:i') }}"
                                             data-jadwal="{{ $j->id }}" data-harga="{{ $j->price }}" aria-pressed="false"
-                                            class="inline-flex min-h-11 min-w-20 items-center justify-center rounded-md border border-nema-line px-4 transition-colors hover:bg-nema-surface aria-pressed:border-nema-accent aria-pressed:bg-nema-maroon aria-pressed:text-white">
+                                            @disabled($j->show_time->isPast())
+                                            class="inline-flex min-h-11 min-w-20 items-center justify-center rounded-md border border-nema-line px-4 transition-colors hover:bg-nema-surface aria-pressed:border-nema-accent aria-pressed:bg-nema-maroon aria-pressed:text-white disabled:cursor-not-allowed disabled:border-nema-line/40 disabled:text-nema-muted/50 disabled:line-through disabled:hover:bg-transparent">
                                             {{ $j->show_time->format('H:i') }}
+                                            @if ($j->show_time->isPast())
+                                                <span class="sr-only">, sudah lewat</span>
+                                            @endif
                                         </button>
                                     @endforeach
                                 </div>
@@ -204,6 +235,22 @@
                             </div>
                         @endforeach
                     </div>
+                    @endif
+
+                    @if ($semuaLewat)
+                        @php $besok = collect($tanggalBerjadwal)->first(fn ($t) => $t > $tanggal->format('Y-m-d')); @endphp
+
+                        <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-nema-surface p-4">
+                            <p class="text-sm text-nema-muted">Semua jam tayang di tanggal ini sudah lewat.</p>
+
+                            @if ($besok)
+                                @php $b = \Illuminate\Support\Carbon::parse($besok); @endphp
+                                <a href="{{ url('/film/' . $film['slug']) }}?tanggal={{ $besok }}"
+                                   class="inline-flex min-h-11 items-center rounded-md bg-nema-maroon px-5 text-sm font-medium text-white transition-colors hover:bg-nema-maroon-hover">
+                                    Lihat jadwal {{ $b->isTomorrow() ? 'besok' : $namaHari[$b->dayOfWeek] . ' ' . $b->day }}
+                                </a>
+                            @endif
+                        </div>
                     @endif
 
                 @endif
