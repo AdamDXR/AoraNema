@@ -18,9 +18,6 @@
         [$th, $bl, $hr] = explode('-', $tanggal->format('Y-m-d'));
         $tanggalTeks = $namaHari[$tanggal->dayOfWeek] . ', ' . (int) $hr . ' ' . $namaBulan[(int) $bl];
 
-        $tarif = require resource_path('data/tarif.php');
-        $harga = $tarif[$layar][$akhirPekan ? 'akhirPekan' : 'biasa'];
-
         // Biaya layanan per tiket. Angka contoh, nanti jadi ketetapan pengelola.
         $biayaLayanan = 3000;
 
@@ -45,7 +42,7 @@
 
     <div class="mx-auto max-w-5xl px-4 py-8 sm:px-6">
 
-        <a href="{{ url('/kursi/' . $slugUrl) }}?layar={{ urlencode($layar) }}&jam={{ urlencode($jam) }}&tanggal={{ $tanggal->format('Y-m-d') }}&jumlah={{ $jumlah }}"
+        <a href="{{ url('/kursi/' . $slugUrl) }}?jadwal={{ $jadwal->id }}&jumlah={{ $jumlah }}"
            class="inline-flex min-h-11 items-center text-sm text-nema-muted transition-colors hover:text-nema-text">
             &larr;&nbsp; Ganti kursi
         </a>
@@ -62,9 +59,7 @@
               class="mt-8 grid gap-10 lg:grid-cols-[1fr_340px] lg:gap-12">
             @csrf
 
-            <input type="hidden" name="layar" value="{{ $layar }}">
-            <input type="hidden" name="jam" value="{{ $jam }}">
-            <input type="hidden" name="tanggal" value="{{ $tanggal->format('Y-m-d') }}">
+            <input type="hidden" name="jadwal" value="{{ $jadwal->id }}">
             <input type="hidden" name="kursi" value="{{ implode(',', $kursi) }}">
 
             <fieldset class="min-w-0">

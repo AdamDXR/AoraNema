@@ -18,10 +18,6 @@
         [$th, $bl, $hr] = explode('-', $tanggal->format('Y-m-d'));
         $tanggalTeks = $namaHari[$tanggal->dayOfWeek] . ', ' . (int) $hr . ' ' . $namaBulan[(int) $bl];
 
-        $tarif = require resource_path('data/tarif.php');
-        $akhirPekan = in_array($tanggal->dayOfWeek, [5, 6, 0]);
-        $harga = $tarif[$layar][$akhirPekan ? 'akhirPekan' : 'biasa'];
-
         // Denah dibentuk dari kursi asli studio. seat_number berupa teks seperti "A1", jadi
         // dipecah jadi huruf baris dan nomor, lalu diurutkan supaya "A10" tidak muncul sebelum "A2".
         $barisKursi = $studio->seats
@@ -137,17 +133,13 @@
                         <span data-total aria-live="polite" class="text-xl font-semibold">Rp 0</span>
                     </div>
 
-                    <a data-lanjut href="{{ url('/masuk') }}" aria-disabled="true"
+                    <a data-lanjut aria-disabled="true"
                        class="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-nema-maroon px-6 font-medium text-white transition-colors hover:bg-nema-maroon-hover aria-disabled:pointer-events-none aria-disabled:opacity-40">
                         Lanjut
                     </a>
 
                     <p data-sisa aria-live="polite" class="mt-3 text-center text-xs text-nema-muted">
                         Pilih {{ $jumlah }} kursi untuk melanjutkan.
-                    </p>
-
-                    <p class="mt-2 text-center text-xs text-nema-muted">
-                        Kamu perlu masuk dulu sebelum pesanan bisa disimpan.
                     </p>
 
                 </div>
@@ -169,11 +161,7 @@
             const lanjut = document.querySelector('[data-lanjut]');
 
             const dasar = @json(url('/bayar/' . $filmSlug));
-            const bawaan = {
-                layar: @json($layar),
-                jam: @json($jam),
-                tanggal: @json($tanggal->format('Y-m-d')),
-            };
+            const bawaan = { jadwal: @json($jadwal->id) };
 
             function rupiah(angka) {
                 return 'Rp ' + angka.toLocaleString('id-ID');

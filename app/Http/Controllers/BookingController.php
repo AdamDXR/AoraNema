@@ -5,10 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\Movie;
 use App\Models\Payment;
-use App\Models\Seat;
 use App\Models\Showtime;
-use App\Models\Studio;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Midtrans\Config;
@@ -16,79 +13,75 @@ use Midtrans\Snap;
 
 class BookingController extends Controller
 {
-    public function pilihKursi(Request $request, string $slug)
+    // Jadwal yang dipilih di halaman detail film dibawa lewat ?jadwal={id}. Studio, kursi, jam,
+    // dan harga semuanya diambil dari jadwal itu, jadi tidak ada yang ditebak dari nama layar.
+    private function ambilJadwal(Request $request, string $slug): Showtime
     {
-        // 1. Cari film berdasarkan slug URL (misal: 'coyote-vs-acme-3' -> ambil angka 3)
         $parts = explode('-', $slug);
         $id = end($parts);
         $movie = Movie::findOrFail($id);
 
-        // 2. Tangkap parameter dari URL yang dikirim oleh halaman detail film
-        $layar = $request->query('layar'); // Contoh: "Regular 2D" atau "IMAX"
-        $jam = $request->query('jam');
-        $tanggal = $request->query('tanggal');
-        $jumlahTiket = $request->query('jumlah', 1);
+        $showtime = Showtime::with(['movie', 'studio.seats'])->find((int) $request->input('jadwal'));
 
-        // 3. Tentukan Studio berdasarkan jenis layar yang dipilih
-        $namaStudio = str_contains(strtolower($layar), 'imax') ? 'Studio 2 (IMAX)' : 'Studio 1 (Regular)';
-        
-        // Ambil studio beserta seluruh kursinya (A1 - E10)
-        $studio = Studio::with('seats')->where('name', $namaStudio)->firstOrFail();
+        // Jadwal harus milik film di alamatnya dan belum lewat.
+        abort_if($showtime === null || $showtime->movie_id !== $movie->id || $showtime->show_time->isPast(), 404);
 
-        // 4. Ambil jadwal tayang (Showtime) untuk film dan studio ini
-        $showtimeDatetime = Carbon::parse($tanggal . ' ' . $jam);
-        $showtime = Showtime::where('movie_id', $movie->id)
-                            ->where('studio_id', $studio->id)
-                            ->where('show_time', $showtimeDatetime)
-                            ->first();
+        return $showtime;
+    }
 
-        // 5. Cari ID kursi yang sudah dipesan orang lain pada jadwal tersebut
-        $bookedSeatIds = Booking::where('showtime_id', $showtime->id ?? 0)
-                                ->pluck('seat_id')
-                                ->toArray();
+    // Nomor kursi yang sudah diambil pada jadwal ini. Pesanan yang dibatalkan ikut dihitung, karena
+    // tabel bookings masih mengunci pasangan jadwal dan kursi walaupun statusnya cancelled.
+    private function kursiTerisi(Showtime $showtime): array
+    {
+        return Booking::where('showtime_id', $showtime->id)
+            ->with('seat')
+            ->get()
+            ->pluck('seat.seat_number')
+            ->all();
+    }
 
-        // Ubah ID kursi menjadi array nomor kursi (misal: ['A1', 'A2', 'C5']) agar mudah dibaca frontend
-        $kursiTerisi = $studio->seats->whereIn('id', $bookedSeatIds)->pluck('seat_number')->toArray();
+    // Kursi dari alamat dicocokkan dengan kursi asli studio. Kursi yang tidak ada di studio,
+    // atau lebih dari enam, membuat permintaan ditolak.
+    private function ambilKursi(string $kursiInput, Showtime $showtime): array
+    {
+        $kursi = array_values(array_unique(array_filter(explode(',', $kursiInput))));
+        $adaDiStudio = $showtime->studio->seats->pluck('seat_number')->all();
 
-        // Parse tanggal ke Carbon object agar format() jalan di view
-        $tanggalCarbon = Carbon::parse($tanggal);
+        abort_if(count($kursi) < 1 || count($kursi) > 6 || array_diff($kursi, $adaDiStudio), 404);
 
-        // 6. Lempar semua data ini ke teman frontend Anda di file kursi.blade.php
+        return $kursi;
+    }
+
+    public function pilihKursi(Request $request, string $slug)
+    {
+        $jadwal = $this->ambilJadwal($request, $slug);
+
         return view('kursi', [
-            'film' => $movie, 
-            'studio' => $studio, 
-            'layar' => $layar, 
-            'jam' => $jam, 
-            'tanggal' => $tanggalCarbon, 
-            'jumlah' => $jumlahTiket, 
-            'kursiTerisi' => $kursiTerisi
+            'film' => $jadwal->movie,
+            'jadwal' => $jadwal,
+            'studio' => $jadwal->studio,
+            'layar' => $jadwal->studio->name,
+            'jam' => $jadwal->show_time->format('H:i'),
+            'tanggal' => $jadwal->show_time->copy()->startOfDay(),
+            'harga' => $jadwal->price,
+            'jumlah' => max(1, min(6, (int) $request->query('jumlah', 1))),
+            'kursiTerisi' => $this->kursiTerisi($jadwal),
         ]);
     }
 
     public function halamanBayar(Request $request, string $slug)
     {
-        // 1. Ambil ID dari slug URL
-        $parts = explode('-', $slug);
-        $id = end($parts);
-        $film = Movie::findOrFail($id); // Sekarang ambil dari database!
+        $jadwal = $this->ambilJadwal($request, $slug);
 
-        // 2. Tangkap parameter dari URL
-        $layar = $request->query('layar');
-        $jam = $request->query('jam');
-        $tanggal = Carbon::parse($request->query('tanggal'));
-        
-        // 3. Tangkap deretan kursi, contoh: "F7,F8,F9" diubah jadi array ['F7', 'F8', 'F9']
-        $kursiInput = $request->query('kursi');
-        $kursi = $kursiInput ? explode(',', $kursiInput) : [];
-
-        // 4. Hitung akhir pekan (untuk logika harga kalau ada)
-        $akhirPekan = in_array($tanggal->dayOfWeek, [0, 5, 6]);
-
-        $daftarMetode = ['qris' => 'QRIS', 'va' => 'Transfer Bank', 'ewallet' => 'Dompet Digital'];
-        $namaMetode = $daftarMetode[$request->query('metode')] ?? 'Belum dipilih';
-
-        // Lempar ke view bayar.blade.php
-        return view('bayar', compact('film', 'tanggal', 'layar', 'jam', 'kursi', 'akhirPekan', 'namaMetode'));
+        return view('bayar', [
+            'film' => $jadwal->movie,
+            'jadwal' => $jadwal,
+            'layar' => $jadwal->studio->name,
+            'jam' => $jadwal->show_time->format('H:i'),
+            'tanggal' => $jadwal->show_time->copy()->startOfDay(),
+            'harga' => $jadwal->price,
+            'kursi' => $this->ambilKursi((string) $request->query('kursi'), $jadwal),
+        ]);
     }
 
     public function prosesBayar(Request $request, string $slug)
@@ -99,46 +92,17 @@ class BookingController extends Controller
         Config::$isSanitized = true;
         Config::$is3ds = true;
 
-        $parts = explode('-', $slug);
-        $id = end($parts);
-        $film = Movie::findOrFail($id);
-
-        $layar = $request->input('layar');
-        $jam = $request->input('jam');
-        $tanggal = Carbon::parse($request->input('tanggal'));
-        $kursiInput = $request->input('kursi');
+        $showtime = $this->ambilJadwal($request, $slug);
+        $film = $showtime->movie;
         $metode = $request->input('metode');
 
-        if (empty($kursiInput)) {
-            return back()->with('error', 'Pilih minimal satu kursi.');
-        }
+        abort_unless(in_array($metode, ['qris', 'va', 'ewallet']), 404);
 
-        $kursiArr = explode(',', $kursiInput);
-        
-        $akhirPekan = in_array($tanggal->dayOfWeek, [0, 5, 6]);
-        $tarif = require resource_path('data/tarif.php');
-        $harga = $tarif[$layar][$akhirPekan ? 'akhirPekan' : 'biasa'];
+        $kursiArr = $this->ambilKursi((string) $request->input('kursi'), $showtime);
+
         $biayaLayanan = 3000;
-        $totalHargaPerKursi = $harga + $biayaLayanan;
+        $totalHargaPerKursi = $showtime->price + $biayaLayanan;
         $grossAmount = count($kursiArr) * $totalHargaPerKursi;
-
-        // Cari atau buat Studio
-        $namaStudio = str_contains(strtolower($layar), 'imax') ? 'Studio 2 (IMAX)' : 'Studio 1 (Regular)';
-        $studio = Studio::firstOrCreate(
-            ['name' => $namaStudio],
-            ['capacity' => 50]
-        );
-
-        // Cari atau buat Showtime
-        $showtimeDatetime = Carbon::parse($tanggal->format('Y-m-d') . ' ' . $jam);
-        $showtime = Showtime::firstOrCreate(
-            [
-                'movie_id' => $film->id,
-                'studio_id' => $studio->id,
-                'show_time' => $showtimeDatetime,
-            ],
-            ['price' => $harga]
-        );
 
         // Buat order_id dan booking_code unik
         $orderId = 'AORA-' . time() . '-' . rand(100, 999);
@@ -154,15 +118,15 @@ class BookingController extends Controller
         $bookingIds = [];
         // Buat Seat dan Booking untuk masing-masing kursi
         foreach ($kursiArr as $nomorKursi) {
-            $seat = Seat::firstOrCreate([
-                'studio_id' => $studio->id,
-                'seat_number' => $nomorKursi
-            ]);
+            $seat = $showtime->studio->seats->firstWhere('seat_number', $nomorKursi);
 
             // Cek jika sudah di-booking orang
             $exists = Booking::where('showtime_id', $showtime->id)->where('seat_id', $seat->id)->exists();
             if ($exists) {
-                return back()->with('error', "Kursi {$nomorKursi} sudah dipesan orang lain.");
+                // Kursi yang sempat tersimpan di putaran ini dilepas lagi, supaya tidak tertahan setengah.
+                Booking::whereIn('id', $bookingIds)->delete();
+
+                return back()->with('error', "Kursi {$nomorKursi} baru saja dipesan orang lain. Pilih kursi lain.");
             }
 
             $booking = Booking::create([
