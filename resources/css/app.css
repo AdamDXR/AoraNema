@@ -23,6 +23,12 @@
 
     --color-nema-accent: #e8556b;
     --color-nema-line: #776165;
+
+    /* Tanda batas usia. Ini sinyal fungsional, bukan warna merek, jadi di luar palet maroon.
+       Merahnya sengaja #d32f2f, bukan yang lebih gelap: yang lebih gelap tenggelam di latar kotak. */
+    --color-usia-dewasa: #d32f2f;
+    --color-usia-remaja: #eab308;
+    --color-usia-semua: #15803d;
 }
 
 @layer base {

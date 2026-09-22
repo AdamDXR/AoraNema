@@ -63,7 +63,7 @@
                             <p class="mt-5 max-w-prose text-nema-muted">{{ $f['sinopsis'] }}</p>
 
                             <p class="mt-6 text-sm text-nema-muted">
-                                {{ $f['genre'] }} &middot; {{ $f['durasi'] }} menit &middot; {{ $f['usia'] }}
+                                {{ $f['genre'] }} &middot; {{ $f['durasi'] }} menit @if ($f['usia']) &middot; {{ $f['usia'] }} @endif
                             </p>
 
                             <div class="mt-8 flex flex-wrap gap-3">
@@ -178,8 +178,7 @@
                                 <p class="mt-4 max-w-prose text-nema-muted">{{ $sorotan['sinopsis'] }}</p>
 
                                 <p class="mt-5 text-sm text-nema-muted">
-                                    {{ $sorotan['genre'] }} &middot; {{ $sorotan['durasi'] }} menit &middot;
-                                    {{ $sorotan['usia'] }} &middot; tayang sejak {{ $tanggalIndo($sorotan['rilis']) }}
+                                    {{ $sorotan['genre'] }} &middot; {{ $sorotan['durasi'] }} menit @if ($sorotan['usia']) &middot; {{ $sorotan['usia'] }} @endif &middot; tayang sejak {{ $tanggalIndo($sorotan['rilis']) }}
                                 </p>
 
                                 <a href="{{ url('/film/' . $sorotan['slug']) }}"
@@ -211,7 +210,7 @@
                                 <div class="min-w-0">
                                     <h3 class="text-lg leading-tight"><a href="{{ url('/film/' . $f['slug']) }}" class="after:absolute after:inset-0 focus-visible:outline-none">{{ $f['judul'] }}</a></h3>
                                     <p class="mt-1 text-xs text-nema-muted">{{ $f['genre'] }} &middot;
-                                        {{ $f['durasi'] }} menit &middot; {{ $f['usia'] }}</p>
+                                        {{ $f['durasi'] }} menit @if ($f['usia']) &middot; {{ $f['usia'] }} @endif</p>
                                     <p class="mt-2 text-sm text-nema-muted">{{ $f['tagline'] }}</p>
                                 </div>
 
@@ -243,7 +242,7 @@
                                 <p class="text-xs text-nema-muted">{{ $tanggalIndo($f['rilis']) }}</p>
                                 <h3 class="mt-1 text-lg leading-tight sm:text-xl"><a href="{{ url('/film/' . $f['slug']) }}" class="after:absolute after:inset-0 focus-visible:outline-none">{{ $f['judul'] }}</a></h3>
                                 <p class="mt-1 text-xs text-nema-muted sm:text-sm">{{ $f['genre'] }} &middot;
-                                    {{ $f['durasi'] }} menit &middot; {{ $f['usia'] }}</p>
+                                    {{ $f['durasi'] }} menit @if ($f['usia']) &middot; {{ $f['usia'] }} @endif</p>
                             </div>
 
                             <div class="w-20 shrink-0 sm:w-24">
@@ -273,33 +272,9 @@
                 </p>
             </div>
 
-            <div class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-5">
+            <div class="mt-6 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 sm:gap-x-5 lg:grid-cols-5">
                 @forelse ($film as $f)
-                    <article class="group relative">
-                    <a href="{{ url('/film/' . $f['slug']) }}" class="block">
-                        <div class="relative overflow-hidden rounded-lg bg-nema-surface-2">
-                            @if ($f['poster'])
-                                <img src="{{ $f['poster'] }}" alt="Poster film {{ $f['judul'] }}"
-                                    class="aspect-2/3 w-full object-cover transition-transform duration-300 group-hover:scale-105">
-
-                                {{-- Kabut gelap dari dasar, supaya judul tetap terbaca di atas poster seterang apa pun. --}}
-                                <div
-                                    class="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-black/95 via-black/70 to-transparent">
-                                </div>
-
-                                <h3 class="absolute inset-x-0 bottom-0 p-3 text-base leading-tight text-white">
-                                    {{ $f['judul'] }}</h3>
-                            @else
-                                <div class="flex aspect-2/3 flex-col justify-end gap-2 p-3">
-                                    <span class="text-xs text-nema-muted">Poster belum tersedia</span>
-                                    <h3 class="text-base leading-tight">{{ $f['judul'] }}</h3>
-                                </div>
-                            @endif
-                        </div>
-                    </a>
-
-                        <p class="mt-2 text-xs text-nema-muted">{{ $f['genre'] }} &middot; {{ $f['usia'] }}</p>
-                    </article>
+                    @include('partials.kartu-film', ['f' => $f])
                 @empty
                     <p class="col-span-full rounded-lg border border-nema-line bg-nema-surface p-6 text-sm text-nema-muted">
                         Belum ada film yang bisa ditampilkan. Jadwal pekan ini belum dimasukkan pengelola.
@@ -336,7 +311,7 @@
                         <h3 class="text-lg leading-tight sm:text-xl"><a href="{{ url('/film/' . $f['slug']) }}" class="after:absolute after:inset-0 focus-visible:outline-none">{{ $f['judul'] }}</a></h3>
 
                         <p class="mt-2 text-sm text-nema-muted">
-                            {{ $f['genre'] }} &middot; {{ $f['durasi'] }} menit &middot; {{ $f['usia'] }}
+                            {{ $f['genre'] }} &middot; {{ $f['durasi'] }} menit @if ($f['usia']) &middot; {{ $f['usia'] }} @endif
                         </p>
 
                         <p class="mt-3 text-sm">{{ $f['tagline'] }}</p>

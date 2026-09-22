@@ -10,12 +10,11 @@ class MovieController extends Controller
 {
     public function index(Request $request)
     {
-        $cari = $request->query('cari');
+        $cari = trim((string) $request->query('cari'));
         $genre = $request->query('genre');
-        $status = $request->query('status', 'semua'); // Pilihan: tayang, segera, semua
-
-        // Ambil daftar nama genre yang ada di database untuk menu dropdown
-        $daftarGenre = \App\Models\Genre::orderBy('name')->pluck('name');
+        $status = in_array($request->query('status'), ['tayang', 'segera']) ? $request->query('status') : 'semua';
+        $urut = in_array($request->query('urut'), ['az', 'za']) ? $request->query('urut') : 'terbaru';
+        $tampilan = $request->query('tampilan') === 'baris' ? 'baris' : 'kotak';
 
         $film = Movie::with('genres')
             ->when($status === 'tayang', function ($query) {
@@ -30,13 +29,27 @@ class MovieController extends Controller
                     $q->where('name', $genre);
                 });
             })
-            ->when($cari, function ($query, $cari) {
+            ->when($cari !== '', function ($query) use ($cari) {
                 $query->where('title', 'like', '%' . $cari . '%');
             })
-            ->get();
+            ->get()
+            ->map(fn ($movie) => $movie->kartu());
 
-        return view('daftar-film', compact('film', 'daftarGenre', 'cari', 'genre', 'status'));
+        // "Terbaru" menaruh film yang sedang tayang di atas, rilis paling baru dulu, lalu film yang
+        // akan tayang, tanggal paling dekat dulu. Tanpa pemisahan ini, film yang belum tayang
+        // selalu naik ke puncak karena tanggal rilisnya di masa depan.
+        $film = match ($urut) {
+            'az' => $film->sortBy('judul', SORT_NATURAL | SORT_FLAG_CASE),
+            'za' => $film->sortByDesc('judul', SORT_NATURAL | SORT_FLAG_CASE),
+            default => $film->where('tayang', true)->sortByDesc('rilis')
+                ->concat($film->where('tayang', false)->sortBy('rilis')),
+        };
+
+        $film = $film->values()->all();
+
+        return view('daftar-film', compact('film', 'cari', 'status', 'urut', 'tampilan'));
     }
+
     public function show(Request $request, string $slug)
     {
         // 1. Ekstrak ID dari URL (Misal: 'coyote-vs-acme-3' -> kita ambil angka 3)
