@@ -95,6 +95,69 @@ Route::middleware('guest')->group(function () {
     Route::post('/daftar', [AuthController::class, 'register']);
 });
 
+Route::get('/tiket-saya', function () {
+    $film = collect(require resource_path('data/film.php'))->keyBy('slug');
+    $tarif = require resource_path('data/tarif.php');
+    $hariIni = now()->startOfDay();
+
+    $namaHari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    $namaBulan = [1 => 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+    $pesanan = collect(require resource_path('data/tiket.php'))->map(function ($p) use ($film, $tarif, $hariIni, $namaHari, $namaBulan) {
+        $tanggal = $hariIni->copy()->addDays($p['hari']);
+        $akhirPekan = in_array($tanggal->dayOfWeek, [5, 6, 0]);
+        $harga = $tarif[$p['layar']][$akhirPekan ? 'akhirPekan' : 'biasa'];
+
+        return $p + [
+            'film' => $film[$p['slug']],
+            'tanggal' => $tanggal,
+            'tanggalTeks' => $namaHari[$tanggal->dayOfWeek] . ', ' . $tanggal->day . ' ' . $namaBulan[$tanggal->month] . ' ' . $tanggal->year,
+            'kapan' => match (true) {
+                $p['hari'] === 0 => 'Hari ini',
+                $p['hari'] === 1 => 'Besok',
+                default => $p['hari'] . ' hari lagi',
+            },
+            'kode' => kodePesanan($p['slug'], $tanggal->format('Y-m-d'), $p['jam'], $p['layar'], $p['kursi']),
+            'total' => count($p['kursi']) * ($harga + 3000),
+            'aktif' => ! $p['dibatalkan'] && $tanggal->gte($hariIni),
+            'bisaDinilai' => ! $p['dibatalkan'] && $p['hari'] < 0,
+        ];
+    });
+
+    return view('tiket-saya', [
+        'tab' => request('tab') === 'riwayat' ? 'riwayat' : 'aktif',
+        'aktif' => $pesanan->where('aktif', true)->sortBy('tanggal')->values()->all(),
+        'riwayat' => $pesanan->where('aktif', false)->sortByDesc('tanggal')->values()->all(),
+        'penilaian' => session('penilaian', []),
+    ]);
+});
+
+Route::post('/tiket-saya/nilai', function (\Illuminate\Http\Request $request) {
+    $data = $request->validate([
+        'slug' => ['required', 'string'],
+        'nilai' => ['required', 'integer', 'min:1', 'max:5'],
+    ]);
+
+    // Film cuma boleh dinilai kalau benar-benar sudah ditonton: tiketnya tidak dibatalkan
+    // dan jam tayangnya sudah lewat. Tanpa ini siapa pun bisa menilai film apa saja.
+    $sudahDitonton = collect(require resource_path('data/tiket.php'))->contains(
+        fn ($p) => $p['slug'] === $data['slug'] && ! $p['dibatalkan'] && $p['hari'] < 0
+    );
+
+    abort_unless($sudahDitonton, 403);
+
+    // Sementara disimpan di sesi browser. Begitu akun dan film di database tersedia, ganti dengan:
+    //   UserEvent::create(['user_id' => auth()->id(), 'movie_id' => $movie->id,
+    //                      'event_type' => 'rate', 'event_value' => $data['nilai']]);
+    // Tabel user_events memang dirancang untuk ini, dan isinya dipakai model rekomendasi.
+    session()->put('penilaian.' . $data['slug'], (int) $data['nilai']);
+
+    $judul = collect(require resource_path('data/film.php'))->firstWhere('slug', $data['slug'])['judul'];
+
+    return redirect('/tiket-saya?tab=riwayat')
+        ->with('sukses', 'Penilaianmu untuk "' . $judul . '" tersimpan: ' . $data['nilai'] . ' dari 5.');
+});
+
 // ---------------------------------------------------------------------------
 // Halaman admin. BELUM TERKUNCI karena sistem akun belum ada.
 // Begitu login jadi, seluruh grup ini wajib diberi middleware auth dan cek role.
@@ -465,4 +528,12 @@ function jadwalBentrok(int $studioId, string $waktu, ?int $kecuali = null): ?str
 
     return 'Studio itu sudah dipakai "' . ($bentrok->movie?->title ?? 'film lain')
         . '" pada jam yang sama. Pilih jam atau studio lain.';
+}
+
+// Kode pesanan dibuat tetap dari isi pesanan, jadi memuat ulang halaman tidak mengubahnya.
+// Dipakai halaman tiket dan Tiket Saya, rumusnya satu supaya kodenya selalu sama di keduanya.
+// Nanti diganti kolom booking_code di database.
+function kodePesanan(string $slug, string $tanggal, string $jam, string $layar, array $kursi): string
+{
+    return 'AORA-' . strtoupper(substr(md5($slug . $tanggal . $jam . $layar . implode(',', $kursi)), 0, 6));
 }

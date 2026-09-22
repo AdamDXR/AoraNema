@@ -15,7 +15,6 @@
         {{-- Pencarian dan saringan dikirim lewat alamat, bukan JavaScript, supaya hasilnya
              bisa ditautkan ke orang lain dan tetap jalan tanpa skrip. --}}
         <form method="get" action="{{ url('/film') }}" class="mt-6 flex flex-wrap gap-3">
-            <input type="hidden" name="genre" value="{{ $genre }}">
             <input type="hidden" name="status" value="{{ $status }}">
 
             <label for="cari" class="sr-only">Cari judul film</label>
@@ -28,7 +27,7 @@
                 Cari
             </button>
 
-            @if ($cari !== '' || $genre !== '' || $status !== 'semua')
+            @if ($cari !== '' || $status !== 'semua')
                 <a href="{{ url('/film') }}"
                    class="inline-flex min-h-11 items-center rounded-md border border-nema-line px-6 transition-colors hover:bg-nema-surface">
                     Bersihkan
@@ -42,22 +41,6 @@
                    @if ($status === $nilai) aria-current="page" @endif
                    class="inline-flex min-h-11 items-center rounded-md px-4 text-sm transition-colors {{ $status === $nilai ? 'border border-nema-accent bg-nema-maroon text-white' : 'border border-nema-line text-nema-muted hover:bg-nema-surface' }}">
                     {{ $label }}
-                </a>
-            @endforeach
-        </div>
-
-        <div class="mt-3 flex flex-wrap gap-2">
-            <a href="{{ request()->fullUrlWithQuery(['genre' => null]) }}"
-               @if ($genre === '') aria-current="page" @endif
-               class="inline-flex min-h-11 items-center rounded-md px-4 text-sm transition-colors {{ $genre === '' ? 'border border-nema-accent bg-nema-surface' : 'border border-nema-line text-nema-muted hover:bg-nema-surface' }}">
-                Semua genre
-            </a>
-
-            @foreach ($daftarGenre as $g)
-                <a href="{{ request()->fullUrlWithQuery(['genre' => $g]) }}"
-                   @if ($genre === $g) aria-current="page" @endif
-                   class="inline-flex min-h-11 items-center rounded-md px-4 text-sm transition-colors {{ $genre === $g ? 'border border-nema-accent bg-nema-surface' : 'border border-nema-line text-nema-muted hover:bg-nema-surface' }}">
-                    {{ $g }}
                 </a>
             @endforeach
         </div>
@@ -110,7 +93,7 @@
             <div class="mt-6 rounded-xl border border-nema-line bg-nema-surface p-8 text-center">
                 <p>Tidak ada film yang cocok.</p>
                 <p class="mt-2 text-sm text-nema-muted">
-                    Coba kata kunci lain, atau hapus saringan genre dan statusnya.
+                    Coba kata kunci lain, atau ganti saringan statusnya.
                 </p>
                 <a href="{{ url('/film') }}"
                    class="mt-6 inline-flex min-h-11 items-center rounded-md border border-nema-line px-6 transition-colors hover:bg-nema-surface-2">

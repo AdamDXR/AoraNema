@@ -38,13 +38,23 @@
                         </button>
                         <div
                             class="absolute right-0 top-full hidden w-48 flex-col rounded-md border border-nema-line bg-nema-bg p-1 shadow-lg group-hover:flex">
-                            @if(Auth::user()->role === 'admin')
+                            
+                            @if(Auth::user()->isUser())
+                                <a href="{{ url('/tiket-saya') }}"
+                                    class="flex w-full min-h-10 items-center rounded-sm px-3 text-sm text-left text-nema-muted hover:bg-nema-line/30 hover:text-nema-text transition-colors">
+                                    Tiket Saya
+                                </a>
+                                <div class="my-1 h-px w-full bg-nema-line/40"></div>
+                            @endif
+
+                            @if(Auth::user()->isAdmin())
                                 <a href="{{ url('/admin') }}"
                                     class="flex w-full min-h-10 items-center rounded-sm px-3 text-sm text-left text-nema-muted hover:bg-nema-line/30 hover:text-nema-text transition-colors">
                                     Admin Panel
                                 </a>
                                 <div class="my-1 h-px w-full bg-nema-line/40"></div>
                             @endif
+                            
                             <form method="POST" action="{{ url('/keluar') }}">
                                 @csrf
                                 <button type="submit"
