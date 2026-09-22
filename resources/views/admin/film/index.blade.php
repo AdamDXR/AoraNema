@@ -45,7 +45,7 @@
             @endforeach
         </div>
 
-        <div class="mt-6 overflow-x-auto">
+        <div class="relative mt-6 overflow-x-auto">
             <table class="w-full min-w-4xl text-left text-sm">
                 <thead class="border-b border-nema-line/40 text-nema-muted">
                     <tr>
@@ -99,7 +99,8 @@
                                     </a>
 
                                     <form method="post" action="{{ url('/admin/film/' . $f->id) }}"
-                                          onsubmit="return confirm('Hapus film &quot;{{ $f->title }}&quot;? Tindakan ini tidak bisa dibatalkan. Untuk menarik film dari peredaran, pakai Arsipkan.')">
+                                          data-konfirmasi="Hapus film &quot;{{ $f->title }}&quot;? Tindakan ini tidak bisa dibatalkan. Untuk menarik film dari peredaran, pakai Arsipkan."
+                                          onsubmit="return confirm(this.dataset.konfirmasi)">
                                         @csrf
                                         @method('delete')
 
@@ -136,7 +137,7 @@
         </p>
 
         <div class="mt-8">
-            {{ $film->links() }}
+            {{ $film->links('partials.halaman') }}
         </div>
 
     </div>

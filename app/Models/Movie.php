@@ -56,8 +56,10 @@ class Movie extends Model
             'pilihan' => (bool) $this->pilihan,
             'format' => $this->formatTayang(),
             'rilis' => $this->release_date,
-            'tayang' => (bool) $this->is_showing,
-            'mulaiTeks' => ! $this->is_showing && $rilis?->isFuture()
+            // Segera tayang ditentukan tanggal rilis yang belum tiba. is_showing = false berarti
+            // film diarsipkan admin, dan film seperti itu tidak sampai ke halaman penonton.
+            'tayang' => ! $this->akanTayang(),
+            'mulaiTeks' => $this->akanTayang()
                 ? $rilis->day . ' ' . $namaBulan[$rilis->month]
                 : null,
         ];
@@ -74,6 +76,12 @@ class Movie extends Model
         return Str::startsWith($this->poster_url, ['http://', 'https://'])
             ? $this->poster_url
             : asset('img/' . $this->poster_url);
+    }
+
+    // Film yang tanggal rilisnya belum tiba. Film tanpa tanggal rilis dianggap sedang tayang.
+    public function akanTayang(): bool
+    {
+        return $this->release_date !== null && Carbon::parse($this->release_date)->startOfDay()->isFuture();
     }
 
     // Jadwal yang belum lewat, dipakai untuk tahu format apa saja yang sedang ditawarkan.

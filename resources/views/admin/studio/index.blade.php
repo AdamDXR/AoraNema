@@ -35,7 +35,7 @@
             </p>
         @endif
 
-        <div class="mt-8 overflow-x-auto">
+        <div class="relative mt-8 overflow-x-auto">
             <table class="w-full min-w-2xl text-left text-sm">
                 <thead class="border-b border-nema-line/40 text-nema-muted">
                     <tr>
@@ -76,7 +76,8 @@
                                     </a>
 
                                     <form method="post" action="{{ url('/admin/studio/' . $s->id) }}"
-                                          onsubmit="return confirm('Hapus studio &quot;{{ $s->name }}&quot;? Kursi di dalamnya ikut terhapus.')">
+                                          data-konfirmasi="Hapus studio &quot;{{ $s->name }}&quot;? Kursi di dalamnya ikut terhapus."
+                                          onsubmit="return confirm(this.dataset.konfirmasi)">
                                         @csrf
                                         @method('delete')
 

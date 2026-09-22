@@ -45,7 +45,7 @@
                             <div class="min-w-0 flex-1">
 
                                 @if ($p['aktif'])
-                                    <p class="text-xs text-nema-accent">{{ $p['kapan'] }}</p>
+                                    <p class="text-xs text-nema-accent">{{ $p['kapan'] }}{{ $p['status'] === 'pending' ? ' · Menunggu pembayaran' : '' }}</p>
                                 @else
                                     <p class="text-xs text-nema-muted">
                                         {{ match ($p['status']) { 'cancelled' => 'Dibatalkan', 'pending' => 'Tidak dibayar', default => 'Sudah ditonton' } }}

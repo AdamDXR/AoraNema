@@ -10,19 +10,21 @@ class MovieController extends Controller
 {
     public function index(Request $request)
     {
-        $cari = trim((string) $request->query('cari'));
+        $cari = is_string($request->query('cari')) ? trim($request->query('cari')) : '';
         $genre = $request->query('genre');
         $status = in_array($request->query('status'), ['tayang', 'segera']) ? $request->query('status') : 'semua';
         $urut = in_array($request->query('urut'), ['az', 'za']) ? $request->query('urut') : 'terbaru';
         $tampilan = $request->query('tampilan') === 'baris' ? 'baris' : 'kotak';
 
         $film = Movie::with(['genres', 'jadwalMendatang.studio'])
+            // Film yang diarsipkan admin (is_showing = false) tidak ditawarkan ke penonton.
+            ->where('is_showing', true)
+            // Segera tayang berarti tanggal rilisnya belum tiba.
             ->when($status === 'tayang', function ($query) {
-                $query->where('is_showing', true);
+                $query->where(fn ($q) => $q->whereNull('release_date')->orWhereDate('release_date', '<=', today()));
             })
             ->when($status === 'segera', function ($query) {
-                // Anggap film yang is_showing = false sebagai 'Segera Tayang'
-                $query->where('is_showing', false);
+                $query->whereDate('release_date', '>', today());
             })
             ->when($genre, function ($query, $genre) {
                 $query->whereHas('genres', function ($q) use ($genre) {
@@ -59,31 +61,51 @@ class MovieController extends Controller
         // 2. Cari film di database. fail() akan otomatis menampilkan halaman 404 jika ID tidak ada.
         $movie = Movie::with('genres')->findOrFail($id);
 
+        // Film yang diarsipkan admin sudah tidak ditawarkan, jadi halamannya tidak dibuka lagi.
+        abort_unless($movie->is_showing, 404);
+
         // 3. Format data persis seperti yang diharapkan oleh film.blade.php
         $film = $movie->kartu() + [
             'slug' => $slug,
             'sinopsis' => $movie->synopsis ?? 'Sinopsis belum tersedia.',
-            // Film yang belum tayang menampilkan tanggal rilisnya, bukan jadwal.
-            'mulai' => $movie->is_showing ? null : $movie->release_date,
+            // Diisi di bawah, setelah jadwalnya diketahui.
+            'mulai' => null,
         ];
 
         // 4. Tanggal dibatasi ke enam hari yang ditampilkan di halaman, supaya parameter
         // di URL tidak bisa dipakai meminta jadwal sembarang tanggal.
         $hariIni = now()->startOfDay();
-        $tanggal = $hariIni->copy();
+        $tanggal = null;
 
-        for ($i = 1; $i < 6; $i++) {
+        for ($i = 0; $i < 6; $i++) {
             if ($hariIni->copy()->addDays($i)->format('Y-m-d') === $request->query('tanggal')) {
                 $tanggal = $hariIni->copy()->addDays($i);
             }
         }
 
+        // Semua jam tayang di enam hari itu, termasuk yang hari ini sudah lewat.
+        $semuaJam = $movie->showtimes()
+            ->whereBetween('show_time', [$hariIni, $hariIni->copy()->addDays(5)->endOfDay()])
+            ->pluck('show_time');
+
+        // Tanggal yang punya jadwal sama sekali, dan tanggal yang masih punya jam yang bisa dipesan.
+        $tanggalAda = $semuaJam->map(fn ($w) => $w->format('Y-m-d'))->unique()->sort()->values()->all();
+        $tanggalBerjadwal = $semuaJam->filter(fn ($w) => $w->isFuture())
+            ->map(fn ($w) => $w->format('Y-m-d'))->unique()->sort()->values()->all();
+
+        // Tanpa pilihan tanggal, halaman membuka hari ini selama hari ini punya jadwal, walaupun
+        // jamnya sudah lewat semua. Kalau hari ini tidak ada jadwal sama sekali, dibuka tanggal
+        // terdekat yang ada jadwalnya.
+        $tanggal ??= in_array($hariIni->format('Y-m-d'), $tanggalAda) || ! $tanggalBerjadwal
+            ? $hariIni->copy()
+            : \Illuminate\Support\Carbon::parse($tanggalBerjadwal[0]);
+
         // 5. Jadwal tayang dari tabel showtimes pada tanggal itu, dikelompokkan per format layar.
         // Beberapa studio bisa berformat sama; jam dari studio-studio itu digabung dalam satu baris.
-        // Jam yang sudah lewat tidak ditampilkan karena sudah tidak bisa dipesan.
+        // Jam yang sudah lewat tetap ditampilkan, tapi dimatikan di halaman karena tidak bisa dipesan.
         $jadwal = $movie->showtimes()
             ->with('studio')
-            ->whereBetween('show_time', [$tanggal->copy()->max(now()), $tanggal->copy()->endOfDay()])
+            ->whereBetween('show_time', [$tanggal->copy(), $tanggal->copy()->endOfDay()])
             ->orderBy('show_time')
             ->get()
             ->groupBy(fn ($s) => $s->studio->format)
@@ -91,6 +113,12 @@ class MovieController extends Controller
             // jam tayang pertama dan berpindah-pindah tiap hari.
             ->sortBy(fn ($jam, $format) => array_search($format, \App\Models\Studio::FORMAT));
 
-                return view('film', compact('film', 'tanggal', 'jadwal'));
+                // Film yang belum rilis dan belum punya jadwal menampilkan tanggal rilisnya, bukan jadwal.
+        // Kalau admin sudah membuka jadwal lebih dulu (pra-penjualan), jadwalnya tetap ditampilkan.
+        if ($movie->akanTayang() && ! $tanggalBerjadwal) {
+            $film['mulai'] = $movie->release_date;
+        }
+
+        return view('film', compact('film', 'tanggal', 'jadwal', 'tanggalBerjadwal'));
     }
 }

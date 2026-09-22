@@ -37,7 +37,7 @@
         </button>
 
         <p class="text-center text-sm text-nema-muted">
-            Belum punya akun? <a href="{{ url('/daftar') }}" class="text-nema-accent hover:underline">Daftar di sini</a>
+            Belum punya akun? <a href="{{ url('/daftar') }}" class="inline-flex min-h-11 items-center text-nema-accent hover:underline">Daftar di sini</a>
         </p>
     </form>
 </section>

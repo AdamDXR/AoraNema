@@ -18,10 +18,10 @@
             <label for="cari" class="sr-only">Cari judul film</label>
             <input type="search" id="cari" name="cari" value="{{ $cari }}"
                    placeholder="Cari judul film"
-                   class="min-h-11 w-full grow rounded-md border border-nema-line bg-nema-surface px-4 sm:w-auto">
+                   class="min-h-11 min-w-0 flex-1 basis-48 rounded-md border border-nema-line bg-nema-surface px-4">
 
             <button type="submit"
-                    class="inline-flex min-h-11 items-center rounded-md bg-nema-maroon px-6 font-medium text-white transition-colors hover:bg-nema-maroon-hover">
+                    class="inline-flex min-h-11 shrink-0 items-center rounded-md bg-nema-maroon px-5 font-medium text-white transition-colors hover:bg-nema-maroon-hover sm:px-6">
                 Cari
             </button>
 
@@ -33,11 +33,12 @@
             @endif
         </form>
 
-        <div class="mt-6 flex flex-wrap gap-2">
+        {{-- Di HP baris status digeser ke samping, bukan turun ke baris kedua. --}}
+        <div class="no-scrollbar -mx-4 mt-6 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
             @foreach (['semua' => 'Semua', 'tayang' => 'Sedang Tayang', 'segera' => 'Segera Tayang'] as $nilai => $label)
                 <a href="{{ request()->fullUrlWithQuery(['status' => $nilai === 'semua' ? null : $nilai]) }}"
                    @if ($status === $nilai) aria-current="page" @endif
-                   class="inline-flex min-h-11 items-center rounded-md px-4 text-sm transition-colors {{ $status === $nilai ? 'border border-nema-accent bg-nema-maroon text-white' : 'border border-nema-line text-nema-muted hover:bg-nema-surface' }}">
+                   class="inline-flex min-h-11 shrink-0 items-center rounded-md px-3 text-sm transition-colors sm:px-4 {{ $status === $nilai ? 'border border-nema-accent bg-nema-maroon text-white' : 'border border-nema-line text-nema-muted hover:bg-nema-surface' }}">
                     {{ $label }}
                 </a>
             @endforeach

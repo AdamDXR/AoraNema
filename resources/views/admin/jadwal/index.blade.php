@@ -46,7 +46,7 @@
             </p>
         @endunless
 
-        <div class="mt-8 overflow-x-auto">
+        <div class="relative mt-8 overflow-x-auto">
             <table class="w-full min-w-3xl text-left text-sm">
                 <thead class="border-b border-nema-line/40 text-nema-muted">
                     <tr>
@@ -79,6 +79,10 @@
                             </td>
 
                             <td class="py-4">
+                                @if ($j->bookings_count)
+                                    {{-- Jadwal yang sudah dipesan tidak bisa diubah atau dihapus, supaya tiket penonton tetap sah. --}}
+                                    <p class="text-right text-sm text-nema-muted">Terkunci, sudah dipesan</p>
+                                @else
                                 <div class="flex justify-end gap-2">
                                     <a href="{{ url('/admin/jadwal/' . $j->id . '/ubah') }}"
                                        class="inline-flex min-h-11 items-center rounded-md border border-nema-line px-4 transition-colors hover:bg-nema-surface">
@@ -86,7 +90,8 @@
                                     </a>
 
                                     <form method="post" action="{{ url('/admin/jadwal/' . $j->id) }}"
-                                          onsubmit="return confirm('Hapus jadwal ini?{{ $j->bookings_count ? ' Ada ' . $j->bookings_count . ' pesanan yang ikut terhapus.' : '' }}')">
+                                          data-konfirmasi="Hapus jadwal ini?"
+                                          onsubmit="return confirm(this.dataset.konfirmasi)">
                                         @csrf
                                         @method('delete')
 
@@ -96,6 +101,7 @@
                                         </button>
                                     </form>
                                 </div>
+                                @endif
                             </td>
                         </tr>
                     @empty
@@ -110,7 +116,7 @@
         </div>
 
         <div class="mt-8">
-            {{ $jadwal->links() }}
+            {{ $jadwal->links('partials.halaman') }}
         </div>
 
     </div>

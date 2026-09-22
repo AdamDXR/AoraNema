@@ -24,8 +24,8 @@ class BookingController extends Controller
 
         $showtime = Showtime::with(['movie', 'studio.seats'])->find((int) $request->input('jadwal'));
 
-        // Jadwal harus milik film di alamatnya dan belum lewat.
-        abort_if($showtime === null || $showtime->movie_id !== $movie->id || $showtime->show_time->isPast(), 404);
+        // Jadwal harus milik film di alamatnya, belum lewat, dan filmnya tidak diarsipkan.
+        abort_if($showtime === null || $showtime->movie_id !== $movie->id || $showtime->show_time->isPast() || ! $movie->is_showing, 404);
 
         return $showtime;
     }
@@ -81,7 +81,7 @@ class BookingController extends Controller
             'jam' => $jadwal->show_time->format('H:i'),
             'tanggal' => $jadwal->show_time->copy()->startOfDay(),
             'harga' => $jadwal->price,
-            'kursi' => $this->ambilKursi((string) $request->query('kursi'), $jadwal),
+            'kursi' => $this->ambilKursi(is_string($request->query('kursi')) ? $request->query('kursi') : '', $jadwal),
         ]);
     }
 
@@ -99,46 +99,69 @@ class BookingController extends Controller
 
         abort_unless(in_array($metode, ['qris', 'va', 'ewallet']), 404);
 
-        $kursiArr = $this->ambilKursi((string) $request->input('kursi'), $showtime);
+        $kursiArr = $this->ambilKursi(is_string($request->input('kursi')) ? $request->input('kursi') : '', $showtime);
 
         $biayaLayanan = 3000;
         $totalHargaPerKursi = $showtime->price + $biayaLayanan;
         $grossAmount = count($kursiArr) * $totalHargaPerKursi;
 
-        // Buat order_id dan booking_code unik
-        $orderId = 'AORA-' . time() . '-' . rand(100, 999);
-        $bookingCode = strtoupper(Str::random(6));
+        // Buat order_id dan booking_code unik. Kode diulang kalau kebetulan sudah dipakai.
+        $orderId = 'AORA-' . now()->format('YmdHis') . '-' . strtoupper(Str::random(6));
+        do {
+            $bookingCode = strtoupper(Str::random(6));
+        } while (Booking::where('booking_code', $bookingCode)->exists());
 
-        // Hapus pesanan 'pending' sebelumnya milik pengguna ini untuk jadwal yang sama
-        // (agar mereka bisa mencoba ulang simulasi tanpa terhalang error "kursi sudah dipesan")
-        Booking::where('showtime_id', $showtime->id)
-               ->where('user_id', \Illuminate\Support\Facades\Auth::id())
-               ->where('status', 'pending')
-               ->delete();
+        $userId = \Illuminate\Support\Facades\Auth::id();
 
-        $bookingIds = [];
-        // Buat Seat dan Booking untuk masing-masing kursi
-        foreach ($kursiArr as $nomorKursi) {
-            $seat = $showtime->studio->seats->firstWhere('seat_number', $nomorKursi);
+        // Pemeriksaan kursi dan penyimpanan pesanan dijalankan dalam satu transaksi yang mengunci
+        // jadwal ini. Dua penonton yang memilih kursi sama pada saat bersamaan, atau satu penonton
+        // yang menekan Bayar dua kali, diproses bergantian. Kalau satu kursi ternyata sudah diambil,
+        // seluruh pesanan dibatalkan, jadi tidak ada kursi yang tertahan setengah.
+        try {
+            $bookingIds = \Illuminate\Support\Facades\DB::transaction(function () use ($showtime, $kursiArr, $userId, $bookingCode, $totalHargaPerKursi, $orderId, $grossAmount, $metode) {
+                Showtime::whereKey($showtime->id)->lockForUpdate()->first();
 
-            // Cek jika sudah di-booking orang
-            $exists = Booking::where('showtime_id', $showtime->id)->where('seat_id', $seat->id)->exists();
-            if ($exists) {
-                // Kursi yang sempat tersimpan di putaran ini dilepas lagi, supaya tidak tertahan setengah.
-                Booking::whereIn('id', $bookingIds)->delete();
+                // Hapus pesanan 'pending' sebelumnya milik pengguna ini untuk jadwal yang sama
+                // (agar mereka bisa mencoba ulang simulasi tanpa terhalang error "kursi sudah dipesan")
+                Booking::where('showtime_id', $showtime->id)
+                    ->where('user_id', $userId)
+                    ->where('status', 'pending')
+                    ->delete();
 
-                return back()->with('error', "Kursi {$nomorKursi} baru saja dipesan orang lain. Pilih kursi lain.");
-            }
+                $ids = [];
+                foreach ($kursiArr as $nomorKursi) {
+                    $seat = $showtime->studio->seats->firstWhere('seat_number', $nomorKursi);
 
-            $booking = Booking::create([
-                'booking_code' => $bookingCode,
-                'user_id' => \Illuminate\Support\Facades\Auth::id(),
-                'showtime_id' => $showtime->id,
-                'seat_id' => $seat->id,
-                'price' => $totalHargaPerKursi, // Harga termasuk layanan
-                'status' => 'pending' // default
-            ]);
-            $bookingIds[] = $booking->id;
+                    if (Booking::where('showtime_id', $showtime->id)->where('seat_id', $seat->id)->exists()) {
+                        throw new \DomainException($nomorKursi);
+                    }
+
+                    $ids[] = Booking::create([
+                        'booking_code' => $bookingCode,
+                        'user_id' => $userId,
+                        'showtime_id' => $showtime->id,
+                        'seat_id' => $seat->id,
+                        'price' => $totalHargaPerKursi, // Harga termasuk layanan
+                        'status' => 'pending' // default
+                    ])->id;
+                }
+
+                // Simpan record Payment, terhubung ke booking yang pertama (karena DB schema kita saat ini 1:1 Booking-Payment, tapi aslinya 1 Transaction = Many Bookings)
+                // Dicatat sebelum Midtrans dipanggil, supaya cara bayar yang dipilih tetap tersimpan walaupun Midtrans gagal.
+                Payment::create([
+                    'booking_id' => $ids[0],
+                    'order_id' => $orderId,
+                    'gross_amount' => $grossAmount,
+                    'payment_type' => $metode,
+                    'transaction_status' => 'pending'
+                ]);
+
+                return $ids;
+            });
+        } catch (\DomainException $e) {
+            return back()->with('error', "Kursi {$e->getMessage()} baru saja dipesan orang lain. Pilih kursi lain.");
+        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+            return back()->with('error', 'Salah satu kursi baru saja dipesan orang lain. Pilih kursi lain.');
         }
 
         // Panggil Midtrans Snap
@@ -155,16 +178,6 @@ class BookingController extends Controller
                 'finish' => url('/tiket/' . $bookingCode)
             ]
         ];
-
-        // Simpan record Payment, terhubung ke booking yang pertama (karena DB schema kita saat ini 1:1 Booking-Payment, tapi aslinya 1 Transaction = Many Bookings)
-        // Dicatat sebelum Midtrans dipanggil, supaya cara bayar yang dipilih tetap tersimpan walaupun Midtrans gagal.
-        Payment::create([
-            'booking_id' => $bookingIds[0],
-            'order_id' => $orderId,
-            'gross_amount' => $grossAmount,
-            'payment_type' => $metode,
-            'transaction_status' => 'pending'
-        ]);
 
         try {
             $snapUrl = Snap::createTransaction($params)->redirect_url;
@@ -205,7 +218,7 @@ class BookingController extends Controller
         // digabung jadi satu pesanan, karena begitulah penonton melihatnya.
         $pesanan = Booking::where('user_id', $request->user()->id)
             ->whereNotNull('booking_code')
-            ->with(['showtime.movie.genres', 'showtime.studio', 'seat', 'payment'])
+            ->with(['showtime.movie.genres', 'showtime.movie.jadwalMendatang.studio', 'showtime.studio', 'seat', 'payment'])
             ->orderBy('id')
             ->get()
             ->groupBy('booking_code')
@@ -233,6 +246,7 @@ class BookingController extends Controller
                     'total' => $kursi->pluck('payment')->filter()->first()->gross_amount ?? $kursi->sum('price'),
                     'status' => $b->status,
                     'kapan' => match (true) {
+                        $selisih < 0 => 'Sedang diputar',
                         $selisih === 0 => 'Hari ini',
                         $selisih === 1 => 'Besok',
                         default => $selisih . ' hari lagi',
@@ -290,6 +304,9 @@ class BookingController extends Controller
 
     public function halamanTiket(Request $request, string $booking_code)
     {
+        // Kode tiket di alamat boleh ditulis huruf kecil, tapi kode batang Code 39 hanya menerima huruf besar.
+        $booking_code = strtoupper($booking_code);
+
         // 1. Ambil data transaksi dari database
         $bookings = Booking::where('booking_code', $booking_code)->with(['showtime.movie', 'showtime.studio', 'seat', 'payment'])->get();
         
@@ -317,11 +334,21 @@ class BookingController extends Controller
         $total = $firstBooking->payment->gross_amount ?? $bookings->sum('price');
         $kode = $booking_code;
 
+        // Kode batang hanya ditampilkan untuk tiket yang masih bisa dipakai masuk: sudah dibayar dan
+        // filmnya belum selesai. Tiket lain tetap bisa dibuka, tapi tanpa kode yang bisa dipindai.
+        $selesai = $tanggalCarbon->copy()->addMinutes($film->duration_minutes ?: 120)->isPast();
+        $keadaan = match (true) {
+            $firstBooking->status === 'cancelled' => 'batal',
+            $firstBooking->status !== 'paid' => 'belum-bayar',
+            $selesai => 'selesai',
+            default => 'aktif',
+        };
+
         // Generate Barcode menggunakan picqer/php-barcode-generator
         $generator = new \Picqer\Barcode\BarcodeGeneratorSVG();
         $batang = $generator->getBarcode($kode, $generator::TYPE_CODE_39, 2, 64, 'black');
 
         // Lempar ke view tiket.blade.php
-        return view('tiket', compact('film', 'tanggalCarbon', 'layar', 'jam', 'kursi', 'akhirPekan', 'namaMetode', 'total', 'kode', 'batang'));
+        return view('tiket', compact('film', 'tanggalCarbon', 'layar', 'jam', 'kursi', 'akhirPekan', 'namaMetode', 'total', 'kode', 'batang', 'keadaan'));
     }
 }

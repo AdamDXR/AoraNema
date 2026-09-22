@@ -14,7 +14,7 @@
     <header class="sticky top-0 z-50 border-b border-nema-line/40 bg-nema-bg/90 backdrop-blur">
         <div class="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
 
-            <a href="{{ url('/') }}" class="font-display text-2xl font-semibold tracking-tight">
+            <a href="{{ url('/') }}" class="inline-flex min-h-11 items-center font-display text-2xl font-semibold tracking-tight">
                 Aora<span class="text-nema-accent">Nema</span>
             </a>
 
@@ -36,7 +36,12 @@
                     <details data-menu-akun class="relative">
                         <summary
                             class="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 px-2 text-sm text-nema-text transition-colors hover:text-white sm:px-3 [&::-webkit-details-marker]:hidden">
-                            <span class="max-w-24 truncate sm:max-w-40">{{ Auth::user()->name }}</span>
+                            {{-- Di HP nama akun diganti inisial supaya logo, Beranda, dan Film tetap muat
+                                 dalam satu baris. Nama lengkapnya tetap dibacakan pembaca layar. --}}
+                            <span class="grid size-8 place-items-center rounded-full bg-nema-surface-2 text-sm font-semibold sm:hidden" aria-hidden="true">
+                                {{ mb_strtoupper(mb_substr(Auth::user()->name, 0, 1)) }}
+                            </span>
+                            <span class="sr-only sm:not-sr-only sm:max-w-40 sm:truncate">{{ Auth::user()->name }}</span>
                             <svg class="size-4 shrink-0 text-nema-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <path d="m6 9 6 6 6-6" />
@@ -111,30 +116,52 @@
     </footer>
 
     <script>
-        // Posisi gulir diingat per halaman, lalu dikembalikan saat halaman dimuat lagi: waktu
-        // di-refresh, waktu menekan Kembali di browser, dan waktu tombol seperti pilihan tanggal,
-        // saringan, urutan, atau tab memuat ulang halaman yang sama dengan isian berbeda.
-        // Tanpa ini penonton selalu dilempar ke atas. Datang dari halaman lain tetap mulai dari atas.
+        // Posisi gulir diingat per halaman, lalu dikembalikan saat penonton kembali ke halaman itu:
+        // waktu di-refresh, waktu menekan Kembali di browser, waktu tombol seperti pilihan tanggal,
+        // saringan, urutan, atau tab memuat ulang halaman yang sama, dan waktu penonton kembali dari
+        // halaman yang tadi dibuka dari sini, misalnya beranda, lalu detail film, lalu beranda lagi.
+        // Halaman yang dibuka pertama kali tetap mulai dari atas.
         (function () {
             const kunci = 'gulir:' + location.pathname;
+            const simpan = (k, v) => { try { sessionStorage.setItem(k, v); } catch (e) {} };
+            const baca = (k) => { try { return sessionStorage.getItem(k); } catch (e) { return null; } };
+
+            // Setiap tautan ke halaman lain di AoraNema mencatat dari halaman mana tujuannya dibuka,
+            // lengkap dengan ?isian-nya, misalnya /film?urut=az. Tautan ke halaman yang sama, seperti
+            // pilihan tanggal, tidak dicatat supaya asal yang lama tidak tertimpa.
+            document.addEventListener('click', function (e) {
+                const a = e.target.closest('a[href]');
+                if (! a || a.origin !== location.origin || a.pathname === location.pathname) return;
+                simpan('asal:' + a.pathname, location.pathname + location.search);
+            }, true);
+
+            // Tautan Kembali menuju halaman asal yang tercatat, bukan selalu ke beranda.
+            const asal = baca('asal:' + location.pathname);
+            if (asal) {
+                document.querySelectorAll('[data-kembali]').forEach(function (a) { a.href = asal; });
+            }
 
             if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
             window.addEventListener('pagehide', function () {
-                try { sessionStorage.setItem(kunci, String(window.scrollY)); } catch (e) {}
+                simpan(kunci, String(window.scrollY));
             });
 
             // Tautan ke bagian tertentu, seperti #semua-film, lebih diutamakan daripada posisi lama.
             if (location.hash) return;
 
             const jenis = (performance.getEntriesByType('navigation')[0] || {}).type;
-            let dariHalamanIni = false;
-            try { dariHalamanIni = new URL(document.referrer).pathname === location.pathname; } catch (e) {}
+            let dari = null;
+            try { dari = new URL(document.referrer); } catch (e) {}
 
-            if (jenis !== 'reload' && jenis !== 'back_forward' && ! dariHalamanIni) return;
+            const halamanSama = dari && dari.origin === location.origin && dari.pathname === location.pathname;
+            // Halaman sebelumnya dibuka dari halaman ini, jadi penonton sedang kembali ke sini.
+            const asalSebelumnya = dari && dari.origin === location.origin ? baca('asal:' + dari.pathname) : null;
+            const kembaliKeSini = asalSebelumnya !== null && asalSebelumnya.split('?')[0] === location.pathname;
 
-            let posisi = null;
-            try { posisi = sessionStorage.getItem(kunci); } catch (e) {}
+            if (jenis !== 'reload' && jenis !== 'back_forward' && ! halamanSama && ! kembaliKeSini) return;
+
+            const posisi = baca(kunci);
             if (posisi === null) return;
 
             // behavior 'instant' supaya tidak dianimasikan dari atas oleh scroll-smooth di <html>.
