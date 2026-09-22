@@ -14,7 +14,7 @@ class HomeController extends Controller
         $dbMovies = Movie::with('genres')->where('is_showing', true)->get();
 
         // 2. Ubah/Map objek database menjadi format array statis yang dikenali oleh beranda.blade.php
-        $semuaFilm = $dbMovies->map(function ($movie) {
+        $semuaFilm = $dbMovies->map(function (\App\Models\Movie $movie) {
             // Isi kartu (judul, poster, durasi, tagline, pilihan pengelola, dan lainnya) diambil
             // dari Movie::kartu() supaya sama persis dengan kartu di halaman /film.
             return $movie->kartu() + [
@@ -27,14 +27,16 @@ class HomeController extends Controller
         })->toArray();
 
         $rekomendasi = [];
-        if (Auth::check() && Auth::user()->isUser()) {
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
+        if ($user && $user->isUser()) {
             $mlService = new MLRecommendationService();
             // candidates: film yang sedang tayang
             $candidates = $dbMovies;
             // movieCatalog: semua film di DB untuk mencocokkan riwayat user
             $movieCatalog = Movie::with('genres')->get();
 
-            $recommendedIds = $mlService->getRecommendationsForUser(Auth::user(), $candidates, $movieCatalog);
+            $recommendedIds = $mlService->getRecommendationsForUser($user, $candidates, $movieCatalog);
 
             if (!empty($recommendedIds)) {
                 $semuaFilmCollection = collect($semuaFilm);

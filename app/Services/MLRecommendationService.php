@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Models\UserEvent;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -17,22 +18,22 @@ class MLRecommendationService
     {
         $apiUrl = config('services.ml.url') . '/recommendations';
 
-        // 1. Cek Riwayat Interaksi (Bookings = Implicit rating 5.0)
-        // Ambil semua booking status paid, ambil movie_id
-        $bookings = $user->bookings()->where('status', 'paid')->with('showtime')->get();
+        // 1. Cek Riwayat Interaksi (menggunakan UserEvent dengan event_type = 'rate')
+        // Sesuai panduan integrasi, ML saat ini menggunakan history rating.
+        $userEvents = UserEvent::where('user_id', $user->id)
+                               ->where('event_type', 'rate')
+                               ->get();
+                               
         $interactions = [];
         $favorite_movie_ids = [];
 
-        foreach ($bookings as $booking) {
-            if ($booking->showtime) {
-                $movieId = $booking->showtime->movie_id;
-                // Cegah duplikasi interaksi (bisa dirata-rata, tapi kita ambil 1 saja dengan rating 5.0)
-                $interactions[$movieId] = [
-                    'movie_id' => $movieId,
-                    'rating' => 5.0
-                ];
-                $favorite_movie_ids[] = $movieId;
-            }
+        foreach ($userEvents as $event) {
+            $movieId = $event->movie_id;
+            $interactions[$movieId] = [
+                'movie_id' => $movieId,
+                'rating' => (float) $event->event_value
+            ];
+            $favorite_movie_ids[] = $movieId;
         }
         
         $interactions = array_values($interactions);
