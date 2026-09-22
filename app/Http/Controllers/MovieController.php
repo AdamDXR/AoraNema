@@ -60,24 +60,33 @@ class MovieController extends Controller
         $movie = Movie::with('genres')->findOrFail($id);
 
         // 3. Format data persis seperti yang diharapkan oleh film.blade.php
-        $film = [
+        $film = $movie->kartu() + [
             'slug' => $slug,
-            'judul' => $movie->title,
-            'tagline' => 'Saksikan keseruannya di bioskop kesayangan Anda.',
             'sinopsis' => $movie->synopsis ?? 'Sinopsis belum tersedia.',
-            'genre' => $movie->genres->pluck('name')->implode(', '),
-            'durasi' => $movie->duration_minutes,
-            'usia' => '13+',
-            'poster' => $movie->poster_url, // URL TMDB asli
-            'mulai' => null, // Kita anggap semua film TMDB ini sudah tayang
+            // Film yang belum tayang menampilkan tanggal rilisnya, bukan jadwal.
+            'mulai' => $movie->is_showing ? null : $movie->release_date,
         ];
 
-        // 4. Tangkap parameter '?tanggal=' dari URL. Jika kosong, gunakan hari ini.
-        $tanggal = $request->query('tanggal') 
-            ? Carbon::parse($request->query('tanggal'))->startOfDay() 
-            : now()->startOfDay();
+        // 4. Tanggal dibatasi ke enam hari yang ditampilkan di halaman, supaya parameter
+        // di URL tidak bisa dipakai meminta jadwal sembarang tanggal.
+        $hariIni = now()->startOfDay();
+        $tanggal = $hariIni->copy();
 
-        // 5. Lempar data film dan objek tanggal ke view
-        return view('film', compact('film', 'tanggal'));
+        for ($i = 1; $i < 6; $i++) {
+            if ($hariIni->copy()->addDays($i)->format('Y-m-d') === $request->query('tanggal')) {
+                $tanggal = $hariIni->copy()->addDays($i);
+            }
+        }
+
+        // 5. Jadwal tayang dari tabel showtimes pada tanggal itu, dikelompokkan per studio.
+        // Jam yang sudah lewat tidak ditampilkan karena sudah tidak bisa dipesan.
+        $jadwal = $movie->showtimes()
+            ->with('studio')
+            ->whereBetween('show_time', [$tanggal->copy()->max(now()), $tanggal->copy()->endOfDay()])
+            ->orderBy('show_time')
+            ->get()
+            ->groupBy(fn ($s) => $s->studio->name);
+
+                return view('film', compact('film', 'tanggal', 'jadwal'));
     }
 }

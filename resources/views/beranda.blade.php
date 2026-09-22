@@ -18,9 +18,18 @@
         $pendamping = array_slice($kurasi, 1);
 
         // Film kurasi sudah tampil di bagian atas, jadi tidak diulang lagi di daftar rilis terbaru.
-        $baru = array_values(array_filter($film, fn($f) => !$f['pilihan']));
+        // Film tanpa tanggal rilis tidak bisa diurutkan, jadi tidak ikut di daftar ini.
+        $baru = array_values(array_filter($film, fn($f) => !$f['pilihan'] && $f['rilis']));
         usort($baru, fn($a, $b) => strcmp($b['rilis'], $a['rilis']));
         $baru = array_slice($baru, 0, 4);
+
+        // Genre, durasi, dan batas usia digabung dengan titik tengah. Bagian yang datanya
+        // kosong dilewati, supaya tidak tersisa titik menggantung di awal atau akhir.
+        $keterangan = fn ($f) => implode(' · ', array_filter([
+            $f['genre'],
+            $f['durasi'] ? $f['durasi'] . ' menit' : null,
+            $f['usia'],
+        ]));
 
         // Nama bulan ditulis manual supaya tidak ikut berubah kalau locale aplikasi diganti.
         $tanggalIndo = function (string $iso) {
@@ -58,12 +67,16 @@
 
                             <h1 class="mt-3 text-4xl leading-[1.05] sm:text-5xl lg:text-6xl"><a href="{{ url('/film/' . $f['slug']) }}" class="transition-colors hover:text-nema-accent">{{ $f['judul'] }}</a></h1>
 
-                            <p class="mt-5 text-lg sm:text-xl">{{ $f['tagline'] }}</p>
+                            @if ($f['tagline'])
+
+                                <p class="mt-5 text-lg sm:text-xl">{{ $f['tagline'] }}</p>
+
+                            @endif
 
                             <p class="mt-5 max-w-prose text-nema-muted">{{ $f['sinopsis'] }}</p>
 
                             <p class="mt-6 text-sm text-nema-muted">
-                                {{ $f['genre'] }} &middot; {{ $f['durasi'] }} menit @if ($f['usia']) &middot; {{ $f['usia'] }} @endif
+                                {{ $keterangan($f) }}
                             </p>
 
                             <div class="mt-8 flex flex-wrap gap-3">
@@ -146,8 +159,8 @@
                 <div class="border-t border-nema-line/40 pt-6">
                     <h2 class="text-2xl sm:text-3xl">Dipilih Pengelola</h2>
                     <p class="mt-2 max-w-prose text-sm text-nema-muted">
-                        {{ count($kurasi) }} film yang dipilih sendiri oleh pengelola bioskop untuk pekan ini. Yang paling
-                        atas jadi pilihan utamanya, dan itu keputusan orang, bukan hasil hitungan.
+                        {{ count($kurasi) }} film yang ditandai pengelola bioskop sebagai pilihannya. Ini keputusan
+                        orang, bukan hasil hitungan.
                     </p>
                 </div>
 
@@ -173,12 +186,16 @@
                             <div class="min-w-0">
                                 <h3 class="text-3xl leading-tight sm:text-4xl"><a href="{{ url('/film/' . $sorotan['slug']) }}" class="transition-colors hover:text-nema-accent">{{ $sorotan['judul'] }}</a></h3>
 
-                                <p class="mt-3 text-lg text-nema-accent">{{ $sorotan['tagline'] }}</p>
+                                @if ($sorotan['tagline'])
+
+                                    <p class="mt-3 text-lg text-nema-accent">{{ $sorotan['tagline'] }}</p>
+
+                                @endif
 
                                 <p class="mt-4 max-w-prose text-nema-muted">{{ $sorotan['sinopsis'] }}</p>
 
                                 <p class="mt-5 text-sm text-nema-muted">
-                                    {{ $sorotan['genre'] }} &middot; {{ $sorotan['durasi'] }} menit @if ($sorotan['usia']) &middot; {{ $sorotan['usia'] }} @endif &middot; tayang sejak {{ $tanggalIndo($sorotan['rilis']) }}
+                                    {{ implode(' · ', array_filter([$keterangan($sorotan), $sorotan['rilis'] ? 'tayang sejak ' . $tanggalIndo($sorotan['rilis']) : null])) }}
                                 </p>
 
                                 <a href="{{ url('/film/' . $sorotan['slug']) }}"
@@ -209,9 +226,10 @@
 
                                 <div class="min-w-0">
                                     <h3 class="text-lg leading-tight"><a href="{{ url('/film/' . $f['slug']) }}" class="after:absolute after:inset-0 focus-visible:outline-none">{{ $f['judul'] }}</a></h3>
-                                    <p class="mt-1 text-xs text-nema-muted">{{ $f['genre'] }} &middot;
-                                        {{ $f['durasi'] }} menit @if ($f['usia']) &middot; {{ $f['usia'] }} @endif</p>
-                                    <p class="mt-2 text-sm text-nema-muted">{{ $f['tagline'] }}</p>
+                                    <p class="mt-1 text-xs text-nema-muted">{{ $keterangan($f) }}</p>
+                                    @if ($f['tagline'])
+                                        <p class="mt-2 text-sm text-nema-muted">{{ $f['tagline'] }}</p>
+                                    @endif
                                 </div>
 
                             </li>
@@ -241,8 +259,7 @@
                             <div class="min-w-0 flex-1">
                                 <p class="text-xs text-nema-muted">{{ $tanggalIndo($f['rilis']) }}</p>
                                 <h3 class="mt-1 text-lg leading-tight sm:text-xl"><a href="{{ url('/film/' . $f['slug']) }}" class="after:absolute after:inset-0 focus-visible:outline-none">{{ $f['judul'] }}</a></h3>
-                                <p class="mt-1 text-xs text-nema-muted sm:text-sm">{{ $f['genre'] }} &middot;
-                                    {{ $f['durasi'] }} menit @if ($f['usia']) &middot; {{ $f['usia'] }} @endif</p>
+                                <p class="mt-1 text-xs text-nema-muted sm:text-sm">{{ $keterangan($f) }}</p>
                             </div>
 
                             <div class="w-20 shrink-0 sm:w-24">
@@ -277,7 +294,7 @@
                     @include('partials.kartu-film', ['f' => $f])
                 @empty
                     <p class="col-span-full rounded-lg border border-nema-line bg-nema-surface p-6 text-sm text-nema-muted">
-                        Belum ada film yang bisa ditampilkan. Jadwal pekan ini belum dimasukkan pengelola.
+                        Belum ada film yang sedang tayang.
                     </p>
                 @endforelse
             </div>
@@ -311,10 +328,14 @@
                         <h3 class="text-lg leading-tight sm:text-xl"><a href="{{ url('/film/' . $f['slug']) }}" class="after:absolute after:inset-0 focus-visible:outline-none">{{ $f['judul'] }}</a></h3>
 
                         <p class="mt-2 text-sm text-nema-muted">
-                            {{ $f['genre'] }} &middot; {{ $f['durasi'] }} menit @if ($f['usia']) &middot; {{ $f['usia'] }} @endif
+                            {{ $keterangan($f) }}
                         </p>
 
-                        <p class="mt-3 text-sm">{{ $f['tagline'] }}</p>
+                        @if ($f['tagline'])
+
+                            <p class="mt-3 text-sm">{{ $f['tagline'] }}</p>
+
+                        @endif
 
                         <p class="mt-4 text-sm font-medium">
                             Tayang mulai {{ $tanggalIndo($f['mulai']) }}

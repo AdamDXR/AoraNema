@@ -10,7 +10,7 @@
 <section class="mx-auto max-w-lg px-4 py-16 sm:px-6">
     <div class="text-center">
         <h1 class="font-display text-3xl">Daftar Akun</h1>
-        <p class="mt-2 text-sm text-nema-muted">Bergabunglah dan nikmati pengalaman memesan tiket bioskop yang premium.</p>
+        <p class="mt-2 text-sm text-nema-muted">Dengan akun, kamu bisa memesan kursi dan melihat lagi tiket yang sudah dibeli.</p>
     </div>
 
     <form method="POST" action="{{ url('/daftar') }}" class="mt-8 space-y-6">
@@ -56,7 +56,7 @@
         {{-- Pemilihan Genre untuk ML Rekomendasi --}}
         @if(isset($genres) && $genres->isNotEmpty())
             <div class="pt-4 border-t border-nema-line/40">
-                <h2 class="text-sm font-medium text-nema-muted mb-3">Genre Favorit Anda (Boleh lebih dari satu)</h2>
+                <h2 class="text-sm font-medium text-nema-muted mb-3">Genre favorit, boleh lebih dari satu</h2>
                 <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
                     @foreach($genres as $genre)
                         <label class="flex cursor-pointer items-start gap-2 rounded-md border border-nema-line bg-nema-surface p-3 transition-colors hover:border-nema-accent has-checked:border-nema-accent has-checked:bg-nema-accent/10">
@@ -65,7 +65,7 @@
                         </label>
                     @endforeach
                 </div>
-                <p class="mt-2 text-xs text-nema-muted/70">Pilihan ini akan membantu AoraNema memberikan rekomendasi film terbaik untuk Anda.</p>
+                <p class="mt-2 text-xs text-nema-muted">Dipakai untuk menyarankan film yang mungkin kamu suka. Boleh dikosongkan.</p>
             </div>
         @endif
 

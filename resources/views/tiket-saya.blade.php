@@ -4,10 +4,6 @@
 
 @section('konten')
 
-    <p class="border-b border-nema-line/40 bg-nema-surface px-4 py-3 text-center text-sm text-nema-muted sm:px-6">
-        Tiket di halaman ini masih contoh. Tiket aslimu muncul di sini setelah sistem akun jadi.
-    </p>
-
     <div class="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
 
         <h1 class="text-2xl sm:text-3xl">Tiket Saya</h1>
@@ -37,8 +33,8 @@
                         <div @class(['flex gap-4 sm:gap-5', 'opacity-70' => ! $p['aktif']])>
 
                             <div class="w-20 shrink-0 sm:w-24">
-                                @if (file_exists(public_path('img/' . $p['film']['poster'])))
-                                    <img src="{{ asset('img/' . $p['film']['poster']) }}"
+                                @if ($p['film']['poster'])
+                                    <img src="{{ $p['film']['poster'] }}"
                                          alt="Poster film {{ $p['film']['judul'] }}"
                                          class="aspect-2/3 w-full rounded-lg object-cover">
                                 @else
@@ -51,14 +47,18 @@
                                 @if ($p['aktif'])
                                     <p class="text-xs text-nema-accent">{{ $p['kapan'] }}</p>
                                 @else
-                                    <p class="text-xs text-nema-muted">{{ $p['dibatalkan'] ? 'Dibatalkan' : 'Sudah ditonton' }}</p>
+                                    <p class="text-xs text-nema-muted">
+                                        {{ match ($p['status']) { 'cancelled' => 'Dibatalkan', 'pending' => 'Tidak dibayar', default => 'Sudah ditonton' } }}
+                                    </p>
                                 @endif
 
                                 <h2 class="mt-1 text-lg leading-tight">{{ $p['film']['judul'] }}</h2>
 
-                                <p class="mt-1 text-sm text-nema-muted">
-                                    {{ $p['film']['genre'] }} &middot; {{ $p['film']['durasi'] }} menit &middot; {{ $p['film']['usia'] }}
-                                </p>
+                                {{-- Bagian yang datanya kosong dilewati, supaya tidak tersisa titik menggantung. --}}
+                                @php $keterangan = array_filter([$p['film']['genre'], $p['film']['durasi'] ? $p['film']['durasi'] . ' menit' : null, $p['film']['usia']]); @endphp
+                                @if ($keterangan)
+                                    <p class="mt-1 text-sm text-nema-muted">{{ implode(' · ', $keterangan) }}</p>
+                                @endif
 
                                 <p class="mt-2 text-sm text-nema-muted">
                                     {{ $p['tanggalTeks'] }} &middot; {{ $p['jam'] }}
@@ -83,14 +83,14 @@
                         </div>
 
                         @if ($p['bisaDinilai'])
-                            @php $nilaiku = $penilaian[$p['slug']] ?? null; @endphp
+                            @php $nilaiku = $penilaian[$p['movieId']] ?? null; @endphp
 
                             {{-- Tiap bintang tombol kirim sendiri: satu klik langsung menyimpan,
                                  bisa dijangkau dengan Tab, dan tetap jalan tanpa JavaScript. --}}
                             <form method="post" action="{{ url('/tiket-saya/nilai') }}"
                                   class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-nema-line/40 pt-4">
                                 @csrf
-                                <input type="hidden" name="slug" value="{{ $p['slug'] }}">
+                                <input type="hidden" name="movie_id" value="{{ $p['movieId'] }}">
 
                                 <p class="text-sm">
                                     {{ $nilaiku ? 'Penilaianmu: ' . $nilaiku . ' dari 5' : 'Bagaimana filmnya?' }}
@@ -113,7 +113,7 @@
                              supaya tidak bisa dipindai ulang di pintu masuk. --}}
                         @if ($p['aktif'])
                             <div class="mt-4 border-t border-nema-line/40 pt-4 sm:flex sm:justify-end">
-                                <a href="{{ url('/tiket/' . $p['slug']) }}?{{ http_build_query(['layar' => $p['layar'], 'jam' => $p['jam'], 'tanggal' => $p['tanggal']->format('Y-m-d'), 'kursi' => implode(',', $p['kursi']), 'metode' => $p['metode']]) }}"
+                                <a href="{{ url('/tiket/' . $p['kode']) }}"
                                    class="inline-flex min-h-11 w-full items-center justify-center rounded-md bg-nema-maroon px-6 font-medium text-white transition-colors hover:bg-nema-maroon-hover sm:w-auto">
                                     Lihat tiket
                                 </a>

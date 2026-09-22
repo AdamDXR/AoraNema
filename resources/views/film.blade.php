@@ -33,45 +33,6 @@
             $daftarTanggal[] = $hariIni->copy()->addDays($i);
         }
 
-        $geser = $hariIni->diffInDays($tanggal) * 15;
-
-        $tambahMenit = function (string $jam, int $menit) {
-            [$j, $m] = explode(':', $jam);
-            $total = ((int) $j * 60 + (int) $m + $menit) % 1440;
-            return sprintf('%02d:%02d', intdiv($total, 60), $total % 60);
-        };
-
-        // Akhir pekan dihitung Jumat sampai Minggu, seperti kebanyakan bioskop di Indonesia.
-        $akhirPekan = in_array($tanggal->dayOfWeek, [5, 6, 0]);
-
-        // Tarif dipakai bersama halaman pilih kursi, jadi disimpan di satu tempat.
-        $daftarHarga = require resource_path('data/tarif.php');
-
-        $jamDasar = [
-            'Regular 2D' => ['12:30', '15:10', '17:50', '20:30'],
-            'Regular 3D' => ['13:20', '16:00', '18:40', '21:20'],
-            'IMAX' => ['12:00', '15:00', '18:00', '21:00'],
-            'Premiere 2D' => ['13:00', '16:20', '19:40'],
-        ];
-
-        // Tidak semua film tayang di semua format. Aturan sederhana untuk data contoh:
-        // IMAX dan 3D hanya untuk genre yang layar besarnya terasa.
-        $format = ['Regular 2D'];
-
-        if (in_array($film['genre'], ['Laga', 'Fiksi Ilmiah', 'Petualangan', 'Horor'])) {
-            $format[] = 'Regular 3D';
-            $format[] = 'IMAX';
-        }
-
-        $format[] = 'Premiere 2D';
-
-        $jadwal = [];
-        foreach ($format as $layar) {
-            foreach ($jamDasar[$layar] as $jam) {
-                $jadwal[$layar][] = $tambahMenit($jam, $geser);
-            }
-        }
-
         $adaPoster = !empty($film['poster']);
     @endphp
 
@@ -106,13 +67,22 @@
                     <div class="min-w-0 lg:mt-6">
                         <h1 class="text-2xl leading-tight sm:text-3xl">{{ $film['judul'] }}</h1>
 
-                        <p class="mt-2 text-nema-muted">{{ $film['tagline'] }}</p>
+                        @if ($film['tagline'])
+
+                            <p class="mt-2 text-nema-muted">{{ $film['tagline'] }}</p>
+
+                        @endif
 
                         <div class="mt-4 flex flex-wrap items-center gap-2 text-sm">
-                            <span class="rounded-md bg-nema-surface px-3 py-1.5">{{ $film['genre'] }}</span>
-                            <span class="rounded-md bg-nema-surface px-3 py-1.5">{{ $film['durasi'] }} menit</span>
-                            <span
-                                class="rounded-md bg-nema-maroon px-3 py-1.5 font-medium text-white">{{ $film['usia'] }}</span>
+                            @if ($film['genre'])
+                                <span class="rounded-md bg-nema-surface px-3 py-1.5">{{ $film['genre'] }}</span>
+                            @endif
+                            @if ($film['durasi'])
+                                <span class="rounded-md bg-nema-surface px-3 py-1.5">{{ $film['durasi'] }} menit</span>
+                            @endif
+                            @if ($film['usia'])
+                                <span class="rounded-md bg-nema-maroon px-3 py-1.5 font-medium text-white">{{ $film['usia'] }}</span>
+                            @endif
                         </div>
 
                     </div>
@@ -145,25 +115,40 @@
                         @endforeach
                     </div>
 
+                    @if ($jadwal->isEmpty())
+                        <div class="mt-4 rounded-xl border border-nema-line bg-nema-surface p-6">
+                            <p>Belum ada jadwal tayang di tanggal ini.</p>
+                            <p class="mt-2 text-sm text-nema-muted">Coba pilih tanggal lain di atas.</p>
+                        </div>
+                    @else
                     <div class="mt-4 divide-y divide-nema-line/40 border-y border-nema-line/40">
-                        @foreach ($jadwal as $layar => $jamList)
-                            @php $hargaLayar = $daftarHarga[$layar][$akhirPekan ? 'akhirPekan' : 'biasa']; @endphp
+                        @foreach ($jadwal as $layar => $daftarJam)
+                            @php
+                                // Harga ditetapkan per jadwal oleh admin. Kalau semua jam di studio ini
+                                // sama harganya, cukup ditulis sekali di samping nama studio.
+                                $hargaSama = $daftarJam->pluck('price')->unique()->count() === 1;
+                            @endphp
 
-                            <div class="py-5" data-baris data-layar="{{ $layar }}"
-                                data-harga="{{ $hargaLayar }}">
+                            <div class="py-5" data-baris>
 
                                 <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                                     <h3 class="text-base">{{ $layar }}</h3>
-                                    <p class="text-sm text-nema-muted">
-                                        Rp {{ number_format($hargaLayar, 0, ',', '.') }}
-                                    </p>
+                                    @if ($hargaSama)
+                                        <p class="text-sm text-nema-muted">
+                                            Rp {{ number_format($daftarJam->first()->price, 0, ',', '.') }}
+                                        </p>
+                                    @endif
                                 </div>
 
                                 <div class="mt-3 flex flex-wrap gap-2">
-                                    @foreach ($jamList as $jam)
-                                        <button type="button" data-jam="{{ $jam }}" aria-pressed="false"
-                                            class="inline-flex min-h-11 min-w-20 items-center justify-center rounded-md border border-nema-line px-4 transition-colors hover:bg-nema-surface aria-pressed:border-nema-accent aria-pressed:bg-nema-maroon aria-pressed:text-white">
-                                            {{ $jam }}
+                                    @foreach ($daftarJam as $j)
+                                        <button type="button" data-jam="{{ $j->show_time->format('H:i') }}"
+                                            data-jadwal="{{ $j->id }}" data-harga="{{ $j->price }}" aria-pressed="false"
+                                            class="inline-flex min-h-11 min-w-20 flex-col items-center justify-center rounded-md border border-nema-line px-4 py-1.5 transition-colors hover:bg-nema-surface aria-pressed:border-nema-accent aria-pressed:bg-nema-maroon aria-pressed:text-white">
+                                            <span>{{ $j->show_time->format('H:i') }}</span>
+                                            @unless ($hargaSama)
+                                                <span class="text-xs opacity-80">Rp {{ number_format($j->price, 0, ',', '.') }}</span>
+                                            @endunless
                                         </button>
                                     @endforeach
                                 </div>
@@ -201,25 +186,24 @@
 
                                         <p class="text-right">
                                             <span class="block text-xs text-nema-muted">Total</span>
-                                            <span data-total aria-live="polite" class="text-lg font-semibold">
-                                                Rp {{ number_format($hargaLayar, 0, ',', '.') }}
-                                            </span>
+                                            <span data-total aria-live="polite" class="text-lg font-semibold"></span>
                                         </p>
 
                                     </div>
 
-                                    @if(auth()->check() && auth()->user()->isAdmin())
-                                        <div class="mt-5 rounded-md border border-nema-accent/30 bg-nema-accent/10 p-3 text-sm text-nema-accent">
-                                            Admin hanya dapat melihat halaman ini dan tidak dapat memesan tiket.
-                                        </div>
+                                    @if (auth()->check() && auth()->user()->isAdmin())
+                                        <p class="mt-5 rounded-md border border-nema-line bg-nema-surface-2 p-3 text-sm text-nema-muted">
+                                            Akun admin hanya bisa melihat jadwal, tidak bisa memesan tiket.
+                                        </p>
                                     @else
                                         <a data-lanjut
                                             class="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-nema-maroon px-6 font-medium text-white transition-colors hover:bg-nema-maroon-hover sm:w-auto">
                                             Lanjut pilih kursi
                                         </a>
-    
+
                                         <p class="mt-3 text-xs text-nema-muted">
-                                            Maksimal 6 tiket sekali pesan. Kursi dipilih setelah kamu masuk.
+                                            Maksimal 6 tiket sekali pesan.
+                                            @guest Kamu akan diminta masuk dulu sebelum memilih kursi. @endguest
                                         </p>
                                     @endif
 
@@ -228,6 +212,7 @@
                             </div>
                         @endforeach
                     </div>
+                    @endif
 
                 @endif
 
@@ -245,8 +230,7 @@
         (function () {
             const MAKS = 6;
             const semuaBaris = document.querySelectorAll('[data-baris]');
-            const slug = window.location.pathname.split('/').pop();
-            const tanggal = new URLSearchParams(window.location.search).get('tanggal') || '';
+            const dasar = @json(url('/kursi/' . $film['slug']));
 
             function rupiah(angka) {
                 return 'Rp ' + angka.toLocaleString('id-ID');
@@ -254,6 +238,7 @@
 
             function perbarui(baris, jumlah) {
                 const harga = Number(baris.dataset.harga);
+                const lanjut = baris.querySelector('[data-lanjut]');
 
                 baris.dataset.jumlah = jumlah;
                 baris.querySelector('[data-jumlah]').textContent = jumlah;
@@ -261,11 +246,10 @@
                 baris.querySelector('[data-kurang]').disabled = jumlah <= 1;
                 baris.querySelector('[data-tambah]').disabled = jumlah >= MAKS;
 
-                const isi = { layar: baris.dataset.layar, jam: baris.dataset.jam, jumlah: jumlah };
-                if (tanggal) isi.tanggal = tanggal;
-
-                baris.querySelector('[data-lanjut]').href =
-                    '/kursi/' + slug + '?' + new URLSearchParams(isi).toString();
+                // Akun admin tidak punya tombol lanjut.
+                if (lanjut) {
+                    lanjut.href = dasar + '?' + new URLSearchParams({ jadwal: baris.dataset.jadwal, jumlah: jumlah });
+                }
             }
 
             function tutupSemua() {
@@ -289,7 +273,8 @@
                         if (sedangTerpilih) return;
 
                         tombol.setAttribute('aria-pressed', 'true');
-                        baris.dataset.jam = tombol.dataset.jam;
+                        baris.dataset.jadwal = tombol.dataset.jadwal;
+                        baris.dataset.harga = tombol.dataset.harga;
                         baris.querySelector('[data-ringkas-jam]').textContent = tombol.dataset.jam;
                         baris.querySelector('[data-panel]').hidden = false;
                         perbarui(baris, 1);

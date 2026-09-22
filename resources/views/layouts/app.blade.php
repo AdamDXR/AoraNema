@@ -21,52 +21,71 @@
             <div class="flex items-center gap-1 sm:gap-3">
 
                 <a href="{{ url('/film') }}" @if (request()->is('film')) aria-current="page" @endif
-                    class="inline-flex min-h-11 items-center px-3 text-sm transition-colors {{ request()->is('film') ? 'text-nema-text' : 'text-nema-muted hover:text-nema-text' }}">
+                    class="inline-flex min-h-11 items-center px-2 text-sm transition-colors sm:px-3 {{ request()->is('film') ? 'text-nema-text' : 'text-nema-muted hover:text-nema-text' }}">
                     Film
                 </a>
 
                 @auth
-                    <div class="relative group">
-                        <button
-                            class="inline-flex min-h-11 items-center gap-2 px-3 text-sm transition-colors text-nema-text hover:text-white">
-                            <span>{{ Auth::user()->name }}</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                class="opacity-50">
+                    {{-- Menu akun memakai <details> supaya terbuka dengan ketukan di ponsel dan Enter
+                         di keyboard. Menu yang hanya terbuka saat kursor lewat tidak bisa dipakai di HP. --}}
+                    <details data-menu-akun class="relative">
+                        <summary
+                            class="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 px-2 text-sm text-nema-text transition-colors hover:text-white sm:px-3 [&::-webkit-details-marker]:hidden">
+                            <span class="max-w-24 truncate sm:max-w-40">{{ Auth::user()->name }}</span>
+                            <svg class="size-4 shrink-0 text-nema-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <path d="m6 9 6 6 6-6" />
                             </svg>
-                        </button>
-                        <div
-                            class="absolute right-0 top-full hidden w-48 flex-col rounded-md border border-nema-line bg-nema-bg p-1 shadow-lg group-hover:flex">
-                            
-                            @if(Auth::user()->isUser())
+                        </summary>
+
+                        <div class="absolute right-0 top-full mt-1 flex w-52 flex-col rounded-lg border border-nema-line bg-nema-surface p-1 shadow-xl shadow-black/40">
+
+                            @if (Auth::user()->isUser())
                                 <a href="{{ url('/tiket-saya') }}"
-                                    class="flex w-full min-h-10 items-center rounded-sm px-3 text-sm text-left text-nema-muted hover:bg-nema-line/30 hover:text-nema-text transition-colors">
+                                   class="flex min-h-11 items-center rounded-md px-3 text-sm text-nema-muted transition-colors hover:bg-nema-surface-2 hover:text-nema-text">
                                     Tiket Saya
                                 </a>
-                                <div class="my-1 h-px w-full bg-nema-line/40"></div>
                             @endif
 
-                            @if(Auth::user()->isAdmin())
+                            @if (Auth::user()->isAdmin())
                                 <a href="{{ url('/admin') }}"
-                                    class="flex w-full min-h-10 items-center rounded-sm px-3 text-sm text-left text-nema-muted hover:bg-nema-line/30 hover:text-nema-text transition-colors">
-                                    Admin Panel
+                                   class="flex min-h-11 items-center rounded-md px-3 text-sm text-nema-muted transition-colors hover:bg-nema-surface-2 hover:text-nema-text">
+                                    Panel Admin
                                 </a>
-                                <div class="my-1 h-px w-full bg-nema-line/40"></div>
                             @endif
-                            
+
+                            <div class="my-1 h-px bg-nema-line/40"></div>
+
                             <form method="POST" action="{{ url('/keluar') }}">
                                 @csrf
                                 <button type="submit"
-                                    class="flex w-full min-h-10 items-center rounded-sm px-3 text-sm text-left text-nema-muted hover:bg-nema-line/30 hover:text-nema-text transition-colors">
+                                        class="flex min-h-11 w-full items-center rounded-md px-3 text-left text-sm text-nema-muted transition-colors hover:bg-nema-surface-2 hover:text-nema-text">
                                     Keluar
                                 </button>
                             </form>
                         </div>
-                    </div>
+                    </details>
+
+                    <script>
+                        // Menu akun ditutup lagi kalau pengguna mengetuk di luar menu atau menekan Esc.
+                        (function () {
+                            const menu = document.querySelector('[data-menu-akun]');
+
+                            document.addEventListener('click', function (e) {
+                                if (menu.open && ! menu.contains(e.target)) menu.open = false;
+                            });
+
+                            document.addEventListener('keydown', function (e) {
+                                if (e.key === 'Escape' && menu.open) {
+                                    menu.open = false;
+                                    menu.querySelector('summary').focus();
+                                }
+                            });
+                        })();
+                    </script>
                 @else
                     <a href="{{ url('/masuk') }}"
-                        class="inline-flex min-h-11 items-center rounded-md bg-nema-maroon px-5 font-medium text-white transition-colors hover:bg-nema-maroon-hover">
+                        class="inline-flex min-h-11 items-center rounded-md bg-nema-maroon px-4 font-medium text-white sm:px-5 transition-colors hover:bg-nema-maroon-hover">
                         Masuk
                     </a>
                 @endauth

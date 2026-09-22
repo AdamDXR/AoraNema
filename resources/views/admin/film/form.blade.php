@@ -41,6 +41,16 @@
             </div>
 
             <div>
+                <label for="tagline" class="block text-sm">Tagline</label>
+                <input type="text" id="tagline" name="tagline" maxlength="255" aria-describedby="tagline-ket"
+                    value="{{ old('tagline', $movie->tagline) }}"
+                    class="mt-2 block min-h-11 w-full rounded-md border border-nema-line bg-nema-surface px-4">
+                <p id="tagline-ket" class="mt-2 text-xs text-nema-muted">
+                    Satu kalimat pendek di bawah judul. Boleh dikosongkan, nanti tidak ditampilkan.
+                </p>
+            </div>
+
+            <div>
                 <label for="synopsis" class="block text-sm">Sinopsis</label>
                 <textarea id="synopsis" name="synopsis" rows="4"
                     class="mt-2 block w-full rounded-md border border-nema-line bg-nema-surface px-4 py-3">{{ old('synopsis', $movie->synopsis) }}</textarea>
@@ -57,12 +67,23 @@
                 </p>
             </div>
 
-            <div class="grid gap-6 sm:grid-cols-2">
+            <div class="grid gap-6 sm:grid-cols-3">
                 <div>
                     <label for="duration_minutes" class="block text-sm">Durasi (menit)</label>
                     <input type="number" id="duration_minutes" name="duration_minutes" min="1" max="600"
                         value="{{ old('duration_minutes', $movie->duration_minutes) }}"
                         class="mt-2 block min-h-11 w-full rounded-md border border-nema-line bg-nema-surface px-4">
+                </div>
+
+                <div>
+                    <label for="usia" class="block text-sm">Batas usia</label>
+                    <select id="usia" name="usia"
+                        class="mt-2 block min-h-11 w-full rounded-md border border-nema-line bg-nema-surface px-4">
+                        <option value="">Belum diisi</option>
+                        @foreach (['SU' => 'SU, semua umur', '13+' => '13+', '17+' => '17+', '21+' => '21+'] as $nilai => $label)
+                            <option value="{{ $nilai }}" @selected(old('usia', $movie->usia) === $nilai)>{{ $label }}</option>
+                        @endforeach
+                    </select>
                 </div>
 
                 <div>
@@ -98,6 +119,17 @@
                 <input type="checkbox" name="is_showing" value="1" @checked(old('is_showing', $movie->exists ? $movie->is_showing : true))
                     class="size-5 accent-nema-maroon">
                 <span>Sedang tayang</span>
+            </label>
+
+            <label class="flex min-h-11 cursor-pointer items-start gap-3">
+                <input type="checkbox" name="pilihan" value="1" @checked(old('pilihan', $movie->pilihan))
+                    class="mt-0.5 size-5 shrink-0 accent-nema-maroon">
+                <span>
+                    Dipilih pengelola
+                    <span class="mt-1 block text-xs text-nema-muted">
+                        Muncul di bagian Dipilih Pengelola di beranda, selama filmnya sedang tayang.
+                    </span>
+                </span>
             </label>
 
             <div class="flex flex-wrap gap-3 border-t border-nema-line/40 pt-6">

@@ -14,15 +14,11 @@ class HomeController extends Controller
         $dbMovies = Movie::with('genres')->where('is_showing', true)->get();
 
         // 2. Ubah/Map objek database menjadi format array statis yang dikenali oleh beranda.blade.php
-        $semuaFilm = $dbMovies->map(function ($movie, $index) {
-            // Isi kartu (judul, poster, durasi, format, dan lainnya) diambil dari Movie::kartu()
-            // supaya sama persis dengan kartu di halaman /film.
+        $semuaFilm = $dbMovies->map(function ($movie) {
+            // Isi kartu (judul, poster, durasi, tagline, pilihan pengelola, dan lainnya) diambil
+            // dari Movie::kartu() supaya sama persis dengan kartu di halaman /film.
             return $movie->kartu() + [
-                'tagline' => 'Saksikan keseruannya di bioskop kesayangan Anda.',
                 'sinopsis' => $movie->synopsis ?? 'Sinopsis belum tersedia.',
-
-                // Logika Buatan: Jadikan 3 film pertama sebagai 'Pilihan Pengelola' ($kurasi)
-                'pilihan' => $index < 3 ? true : false,
 
                 // Semuanya dianggap sedang tayang (mulai = null)
                 'mulai' => null,
