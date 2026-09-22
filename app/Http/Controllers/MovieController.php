@@ -85,7 +85,10 @@ class MovieController extends Controller
             ->whereBetween('show_time', [$tanggal->copy()->max(now()), $tanggal->copy()->endOfDay()])
             ->orderBy('show_time')
             ->get()
-            ->groupBy(fn ($s) => $s->studio->name);
+            ->groupBy(fn ($s) => $s->studio->name)
+            // Urutan format tetap: Regular 2D, Regular 3D, IMAX, lalu studio lain menurut abjad.
+            // Tanpa ini urutannya ikut jam tayang pertama dan berpindah-pindah tiap hari.
+            ->sortBy(fn ($jam, $nama) => [array_search($nama, ['Regular 2D', 'Regular 3D', 'IMAX']) === false ? 1 : 0, array_search($nama, ['Regular 2D', 'Regular 3D', 'IMAX']), $nama]);
 
                 return view('film', compact('film', 'tanggal', 'jadwal'));
     }

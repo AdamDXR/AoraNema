@@ -47,7 +47,8 @@
                        value="{{ old('name', $studio->name) }}"
                        class="mt-2 block min-h-11 w-full rounded-md border border-nema-line bg-nema-surface px-4">
                 <p class="mt-2 text-xs text-nema-muted">
-                    Contoh: Regular 2D, Regular 3D, IMAX, Premiere 2D.
+                    Nama ini tampil ke penonton sebagai format layar di halaman film, jadi tulis
+                    formatnya, misalnya Regular 2D, Regular 3D, atau IMAX.
                 </p>
             </div>
 
