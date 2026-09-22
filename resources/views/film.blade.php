@@ -167,7 +167,7 @@
                                         <button type="button" data-jam="{{ $j->show_time->format('H:i') }}"
                                             data-jadwal="{{ $j->id }}" data-harga="{{ $j->price }}" aria-pressed="false"
                                             @disabled($j->show_time->isPast())
-                                            class="inline-flex min-h-11 min-w-20 items-center justify-center rounded-md border border-nema-line px-4 transition-colors hover:bg-nema-surface aria-pressed:border-nema-accent aria-pressed:bg-nema-maroon aria-pressed:text-white disabled:cursor-not-allowed disabled:border-nema-line/40 disabled:text-nema-muted/50 disabled:line-through disabled:hover:bg-transparent">
+                                            class="inline-flex min-h-11 min-w-20 items-center justify-center rounded-md border border-nema-line px-4 transition-colors hover:bg-nema-surface aria-pressed:border-nema-accent aria-pressed:bg-nema-maroon aria-pressed:text-white disabled:cursor-not-allowed disabled:border-nema-line/40 disabled:text-nema-muted/50 disabled:hover:bg-transparent">
                                             {{ $j->show_time->format('H:i') }}
                                             @if ($j->show_time->isPast())
                                                 <span class="sr-only">, sudah lewat</span>
