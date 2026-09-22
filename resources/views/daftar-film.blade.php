@@ -4,10 +4,6 @@
 
 @section('konten')
 
-    <p class="border-b border-nema-line/40 bg-nema-surface px-4 py-3 text-center text-sm text-nema-muted sm:px-6">
-        Film di halaman ini masih data contoh, belum tersambung ke database.
-    </p>
-
     <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
 
         <h1 class="text-2xl sm:text-3xl">Semua Film</h1>
@@ -79,30 +75,28 @@
                 </div>
             </details>
 
-            <div class="flex gap-1" role="group" aria-label="Tampilan daftar">
-                @foreach (['kotak' => 'Tampilkan sebagai kotak', 'baris' => 'Tampilkan sebagai baris'] as $nilai => $label)
-                    <a href="{{ request()->fullUrlWithQuery(['tampilan' => $nilai === 'kotak' ? null : $nilai]) }}"
-                       aria-label="{{ $label }}"
-                       @if ($tampilan === $nilai) aria-current="true" @endif
-                       class="inline-flex size-11 items-center justify-center rounded-md transition-colors {{ $tampilan === $nilai ? 'border border-nema-accent bg-nema-surface text-nema-text' : 'border border-nema-line text-nema-muted hover:bg-nema-surface' }}">
-                        @if ($nilai === 'kotak')
-                            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
-                                 stroke-linejoin="round" aria-hidden="true">
-                                <rect x="4" y="4" width="6.5" height="6.5" rx="1" />
-                                <rect x="13.5" y="4" width="6.5" height="6.5" rx="1" />
-                                <rect x="4" y="13.5" width="6.5" height="6.5" rx="1" />
-                                <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1" />
-                            </svg>
-                        @else
-                            <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
-                                 stroke-linecap="round" aria-hidden="true">
-                                <path d="M9 6h11M9 12h11M9 18h11" />
-                                <path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01" stroke-width="3" />
-                            </svg>
-                        @endif
-                    </a>
-                @endforeach
-            </div>
+            {{-- Satu tombol yang menukar tampilan. Ikonnya menunjukkan tampilan tujuan,
+                 sama seperti labelnya, jadi yang terlihat dan yang dibacakan tidak bertentangan. --}}
+            @php $tujuan = $tampilan === 'kotak' ? 'baris' : 'kotak'; @endphp
+            <a href="{{ request()->fullUrlWithQuery(['tampilan' => $tujuan === 'kotak' ? null : $tujuan]) }}"
+               aria-label="Ganti ke tampilan {{ $tujuan }}" title="Ganti ke tampilan {{ $tujuan }}"
+               class="inline-flex size-11 items-center justify-center rounded-md border border-nema-line text-nema-muted transition-colors hover:bg-nema-surface hover:text-nema-text">
+                @if ($tujuan === 'kotak')
+                    <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
+                         stroke-linejoin="round" aria-hidden="true">
+                        <rect x="4" y="4" width="6.5" height="6.5" rx="1" />
+                        <rect x="13.5" y="4" width="6.5" height="6.5" rx="1" />
+                        <rect x="4" y="13.5" width="6.5" height="6.5" rx="1" />
+                        <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1" />
+                    </svg>
+                @else
+                    <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
+                         stroke-linecap="round" aria-hidden="true">
+                        <path d="M9 6h11M9 12h11M9 18h11" />
+                        <path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01" stroke-width="3" />
+                    </svg>
+                @endif
+            </a>
 
         </div>
 
@@ -115,24 +109,7 @@
             @if ($tampilan === 'kotak')
                 <div class="mt-6 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 sm:gap-x-5 lg:grid-cols-5">
                     @foreach ($film as $f)
-                        <a href="{{ url('/film/' . $f['slug']) }}" class="group block">
-                            <div class="overflow-hidden rounded-lg bg-nema-surface-2">
-                                @if (file_exists(public_path('img/' . $f['poster'])))
-                                    <img src="{{ asset('img/' . $f['poster']) }}" alt=""
-                                         class="aspect-2/3 w-full object-cover transition-transform duration-300 group-hover:scale-105">
-                                @else
-                                    <div class="flex aspect-2/3 items-end p-3">
-                                        <span class="text-xs text-nema-muted">Poster belum tersedia</span>
-                                    </div>
-                                @endif
-                            </div>
-
-                            <h2 class="mt-3 line-clamp-2 text-base leading-snug transition-colors group-hover:text-nema-accent">
-                                {{ $f['judul'] }}
-                            </h2>
-
-                            @include('partials.keterangan-film', ['f' => $f])
-                        </a>
+                        @include('partials.kartu-film', ['f' => $f])
                     @endforeach
                 </div>
             @else
@@ -141,8 +118,8 @@
                         <li>
                             <a href="{{ url('/film/' . $f['slug']) }}" class="group flex items-center gap-4 py-4 sm:gap-6">
                                 <div class="w-20 shrink-0 overflow-hidden rounded-lg bg-nema-surface-2 sm:w-24">
-                                    @if (file_exists(public_path('img/' . $f['poster'])))
-                                        <img src="{{ asset('img/' . $f['poster']) }}" alt=""
+                                    @if ($f['poster'])
+                                        <img src="{{ $f['poster'] }}" alt="" loading="lazy"
                                              class="aspect-2/3 w-full object-cover transition-transform duration-300 group-hover:scale-105">
                                     @else
                                         <div class="aspect-2/3 w-full"></div>
@@ -153,6 +130,10 @@
                                     <h2 class="text-lg leading-snug transition-colors group-hover:text-nema-accent sm:text-xl">
                                         {{ $f['judul'] }}
                                     </h2>
+
+                                    @if ($f['genre'])
+                                        <p class="mt-1 truncate text-sm text-nema-muted">{{ $f['genre'] }}</p>
+                                    @endif
 
                                     @include('partials.keterangan-film', ['f' => $f])
                                 </div>

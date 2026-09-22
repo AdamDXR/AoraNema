@@ -15,9 +15,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // memanggil seeder MovieSeeder yang bakal narik API TMDB
         $this->call([
             MovieSeeder::class,
+            UserSeeder::class,
+            CinemaSeeder::class,
         ]);
     }
 }
