@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\Movie;
 use App\Models\Payment;
 use App\Models\Showtime;
+use App\Models\UserEvent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Midtrans\Config;
@@ -192,6 +193,93 @@ class BookingController extends Controller
 
             return redirect('/tiket/' . $bookingCode)->with('warning', 'Pembayaran belum tersambung ke Midtrans, jadi pesanan ini dianggap lunas tanpa ditagih. Tiket ini hanya untuk uji coba.');
         }
+    }
+
+    public function tiketSaya(Request $request)
+    {
+        $hariIni = now()->startOfDay();
+        $namaHari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        $namaBulan = [1 => 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+        // Tabel bookings menyimpan satu baris per kursi. Kursi dengan kode pesanan yang sama
+        // digabung jadi satu pesanan, karena begitulah penonton melihatnya.
+        $pesanan = Booking::where('user_id', $request->user()->id)
+            ->whereNotNull('booking_code')
+            ->with(['showtime.movie.genres', 'showtime.studio', 'seat', 'payment'])
+            ->orderBy('id')
+            ->get()
+            ->groupBy('booking_code')
+            ->map(function ($kursi, $kode) use ($hariIni, $namaHari, $namaBulan) {
+                $b = $kursi->first();
+                $waktu = $b->showtime->show_time;
+                $selisih = (int) $hariIni->diffInDays($waktu->copy()->startOfDay(), false);
+                $dibatalkan = $b->status === 'cancelled';
+                $lewat = $waktu->isPast();
+
+                return [
+                    'kode' => $kode,
+                    'movieId' => $b->showtime->movie_id,
+                    'film' => $b->showtime->movie->kartu(),
+                    'tanggal' => $waktu,
+                    'tanggalTeks' => $namaHari[$waktu->dayOfWeek] . ', ' . $waktu->day . ' ' . $namaBulan[$waktu->month] . ' ' . $waktu->year,
+                    'jam' => $waktu->format('H:i'),
+                    'layar' => $b->showtime->studio->name,
+                    'kursi' => $kursi->pluck('seat.seat_number')->sort(SORT_NATURAL)->values()->all(),
+                    'total' => $kursi->pluck('payment')->filter()->first()->gross_amount ?? $kursi->sum('price'),
+                    'status' => $b->status,
+                    'kapan' => match (true) {
+                        $selisih === 0 => 'Hari ini',
+                        $selisih === 1 => 'Besok',
+                        default => $selisih . ' hari lagi',
+                    },
+                    'aktif' => ! $dibatalkan && ! $lewat,
+                    // Film hanya bisa dinilai setelah benar-benar ditonton: sudah dibayar dan jamnya lewat.
+                    'bisaDinilai' => $b->status === 'paid' && $lewat,
+                ];
+            });
+
+        // Penilaian disimpan satu per film per akun, jadi bisa dipetakan langsung ke id film.
+        $penilaian = UserEvent::where('user_id', $request->user()->id)
+            ->where('event_type', 'rate')
+            ->pluck('event_value', 'movie_id')
+            ->map(fn ($nilai) => (int) $nilai)
+            ->all();
+
+        return view('tiket-saya', [
+            'tab' => $request->query('tab') === 'riwayat' ? 'riwayat' : 'aktif',
+            'aktif' => $pesanan->where('aktif', true)->sortBy('tanggal')->values()->all(),
+            'riwayat' => $pesanan->where('aktif', false)->sortByDesc('tanggal')->values()->all(),
+            'penilaian' => $penilaian,
+        ]);
+    }
+
+    public function nilaiFilm(Request $request)
+    {
+        $data = $request->validate([
+            'movie_id' => ['required', 'integer'],
+            'nilai' => ['required', 'integer', 'min:1', 'max:5'],
+        ]);
+
+        // Film cuma boleh dinilai kalau benar-benar sudah ditonton: tiketnya sudah dibayar
+        // dan jam tayangnya sudah lewat. Tanpa ini siapa pun bisa menilai film apa saja.
+        $sudahDitonton = Booking::where('user_id', $request->user()->id)
+            ->where('status', 'paid')
+            ->whereHas('showtime', fn ($q) => $q->where('movie_id', $data['movie_id'])->where('show_time', '<', now()))
+            ->exists();
+
+        abort_unless($sudahDitonton, 403);
+
+        // Satu penilaian per film per akun. Menilai ulang mengganti nilai lama, tidak menumpuk,
+        // supaya data untuk model rekomendasi tidak terhitung dua kali.
+        UserEvent::updateOrCreate(
+            ['user_id' => $request->user()->id, 'movie_id' => $data['movie_id'], 'event_type' => 'rate'],
+            ['event_value' => (string) $data['nilai']]
+        );
+
+        $judul = Movie::find($data['movie_id'])->title;
+
+        return redirect('/tiket-saya?tab=riwayat')
+            ->with('sukses', 'Penilaianmu untuk "' . $judul . '" tersimpan: ' . $data['nilai'] . ' dari 5.');
     }
 
     public function halamanTiket(Request $request, string $booking_code)
