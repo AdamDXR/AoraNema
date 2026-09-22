@@ -20,12 +20,18 @@
 
                 <a href="{{ url('/film') }}"
                    @if (request()->is('film')) aria-current="page" @endif
-                   class="inline-flex min-h-11 items-center px-3 text-sm transition-colors {{ request()->is('film') ? 'text-nema-text' : 'text-nema-muted hover:text-nema-text' }}">
+                   class="inline-flex min-h-11 items-center px-2 text-sm transition-colors sm:px-3 {{ request()->is('film') ? 'text-nema-text' : 'text-nema-muted hover:text-nema-text' }}">
                     Film
                 </a>
 
+                <a href="{{ url('/tiket-saya') }}"
+                   @if (request()->is('tiket-saya')) aria-current="page" @endif
+                   class="inline-flex min-h-11 items-center px-2 text-sm transition-colors sm:px-3 {{ request()->is('tiket-saya') ? 'text-nema-text' : 'text-nema-muted hover:text-nema-text' }}">
+                    Tiket<span class="hidden sm:inline">&nbsp;Saya</span>
+                </a>
+
                 <a href="{{ url('/masuk') }}"
-                   class="inline-flex min-h-11 items-center rounded-md bg-nema-maroon px-5 font-medium text-white transition-colors hover:bg-nema-maroon-hover">
+                   class="inline-flex min-h-11 items-center rounded-md bg-nema-maroon px-4 font-medium text-white transition-colors hover:bg-nema-maroon-hover sm:px-5">
                     Masuk
                 </a>
 

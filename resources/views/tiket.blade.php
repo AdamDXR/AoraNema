@@ -19,7 +19,7 @@
 
         // Kode dibuat tetap dari isi pesanan, jadi memuat ulang halaman tidak
         // mengubah kodenya. Nanti kode ini disimpan di kolom booking_code.
-        $kode = 'AORA-' . strtoupper(substr(md5($film['slug'] . $tanggal->format('Y-m-d') . $jam . $layar . implode(',', $kursi)), 0, 6));
+        $kode = kodePesanan($film['slug'], $tanggal->format('Y-m-d'), $jam, $layar, $kursi);
 
         // Code 39: standar kode batang yang bisa digambar sendiri tanpa paket tambahan.
         // Tiap karakter jadi 9 elemen berselang-seling batang dan spasi, tiga di antaranya lebar.
