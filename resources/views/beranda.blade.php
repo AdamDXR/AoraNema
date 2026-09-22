@@ -148,7 +148,8 @@
                 {{-- Di ponsel susunannya jadi satu kolom: film utama dulu, baru dua pilihan berikutnya. --}}
                 <div class="mt-8 grid gap-10 lg:grid-cols-12 lg:gap-12">
 
-                    <article class="lg:col-span-8">
+                    {{-- Tanpa film pendamping, film utama memakai lebar penuh supaya tidak ada kolom kosong. --}}
+                    <article @class(['lg:col-span-8' => count($pendamping), 'lg:col-span-12' => ! count($pendamping)])>
                         <div class="flex flex-col gap-6 sm:flex-row sm:gap-8">
 
                             <a href="{{ url('/film/' . $sorotan['slug']) }}"
@@ -188,6 +189,7 @@
                         </div>
                     </article>
 
+                    @if (count($pendamping))
                     <ul
                         class="grid gap-x-8 sm:grid-cols-2 lg:col-span-4 lg:grid-cols-1 lg:gap-x-0 lg:border-l lg:border-nema-line/40 lg:pl-8">
                         @foreach ($pendamping as $f)
@@ -216,6 +218,7 @@
                             </li>
                         @endforeach
                     </ul>
+                    @endif
 
                 </div>
 
