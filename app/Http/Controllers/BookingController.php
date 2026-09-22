@@ -61,7 +61,7 @@ class BookingController extends Controller
             'film' => $jadwal->movie,
             'jadwal' => $jadwal,
             'studio' => $jadwal->studio,
-            'layar' => $jadwal->studio->name,
+            'layar' => $jadwal->studio->label(),
             'jam' => $jadwal->show_time->format('H:i'),
             'tanggal' => $jadwal->show_time->copy()->startOfDay(),
             'harga' => $jadwal->price,
@@ -77,7 +77,7 @@ class BookingController extends Controller
         return view('bayar', [
             'film' => $jadwal->movie,
             'jadwal' => $jadwal,
-            'layar' => $jadwal->studio->name,
+            'layar' => $jadwal->studio->label(),
             'jam' => $jadwal->show_time->format('H:i'),
             'tanggal' => $jadwal->show_time->copy()->startOfDay(),
             'harga' => $jadwal->price,
@@ -228,7 +228,7 @@ class BookingController extends Controller
                     'tanggal' => $waktu,
                     'tanggalTeks' => $namaHari[$waktu->dayOfWeek] . ', ' . $waktu->day . ' ' . $namaBulan[$waktu->month] . ' ' . $waktu->year,
                     'jam' => $waktu->format('H:i'),
-                    'layar' => $b->showtime->studio->name,
+                    'layar' => $b->showtime->studio->label(),
                     'kursi' => $kursi->pluck('seat.seat_number')->sort(SORT_NATURAL)->values()->all(),
                     'total' => $kursi->pluck('payment')->filter()->first()->gross_amount ?? $kursi->sum('price'),
                     'status' => $b->status,
@@ -305,7 +305,7 @@ class BookingController extends Controller
         $film = $firstBooking->showtime->movie;
         $tanggalCarbon = $firstBooking->showtime->show_time;
         $jam = $tanggalCarbon->format('H:i');
-        $layar = $firstBooking->showtime->studio->name;
+        $layar = $firstBooking->showtime->studio->label();
         
         $kursiArr = $bookings->map(function($b) { return $b->seat->seat_number; })->toArray();
         $kursi = $kursiArr;

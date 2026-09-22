@@ -68,7 +68,7 @@
 
                             <td class="py-4 pr-4">{{ $j->movie?->title ?? '—' }}</td>
 
-                            <td class="py-4 pr-4 text-nema-muted">{{ $j->studio?->name ?? '—' }}</td>
+                            <td class="py-4 pr-4 text-nema-muted">{{ $j->studio?->label() ?? '—' }}</td>
 
                             <td class="py-4 pr-4 text-nema-muted">
                                 Rp {{ number_format($j->price, 0, ',', '.') }}

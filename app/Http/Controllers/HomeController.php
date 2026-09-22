@@ -11,7 +11,7 @@ class HomeController extends Controller
     public function index()
     {
         // 1. Ambil semua film dari database beserta genrenya (mencegah N+1 Query)
-        $dbMovies = Movie::with('genres')->where('is_showing', true)->get();
+        $dbMovies = Movie::with(['genres', 'jadwalMendatang.studio'])->where('is_showing', true)->get();
 
         // 2. Ubah/Map objek database menjadi format array statis yang dikenali oleh beranda.blade.php
         $semuaFilm = $dbMovies->map(function (\App\Models\Movie $movie) {

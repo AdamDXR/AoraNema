@@ -9,6 +9,9 @@ class Studio extends Model
 {
     protected $guarded = ['id'];
 
+    // Format layar yang bisa dipilih admin, sekaligus urutan tampilnya di halaman film.
+    public const FORMAT = ['Regular 2D', 'Regular 3D', 'IMAX'];
+
     // Satu studio memiliki banyak kursi
     public function seats(): HasMany
     {
@@ -19,6 +22,13 @@ class Studio extends Model
     public function showtimes(): HasMany
     {
         return $this->hasMany(Showtime::class);
+    }
+
+    // Label untuk penonton: format dan nama studionya, misalnya "IMAX, Studio 12", supaya tahu
+    // pintu mana yang dituju. Kalau nama studio sama dengan formatnya, cukup ditulis sekali.
+    public function label(): string
+    {
+        return $this->name === $this->format ? $this->name : $this->format . ', ' . $this->name;
     }
 
     // Harga per kursi di studio ini pada tanggal tertentu. Akhir pekan dihitung Jumat sampai

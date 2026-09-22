@@ -3,60 +3,131 @@
 namespace Database\Seeders;
 
 use App\Models\Movie;
+use App\Models\Seat;
 use App\Models\Showtime;
 use App\Models\Studio;
 use Illuminate\Database\Seeder;
 
-// Jadwal uji untuk enam hari ke depan, supaya setiap film yang sedang tayang punya jam tayang.
+// Jadwal uji untuk enam hari ke depan: setiap film yang sedang tayang dapat 3 sampai 5 jam
+// per hari, di format yang berbeda-beda, tanpa ada studio yang bertabrakan.
 // Jalankan sendiri dengan: php artisan db:seed --class=JadwalContohSeeder
 // Tidak dipanggil DatabaseSeeder, karena jadwal asli seharusnya dibuat admin.
 class JadwalContohSeeder extends Seeder
 {
+    // Jumlah studio per format. Satu studio muat sekitar enam tayangan sehari, jadi 19 film
+    // dengan 3 sampai 5 tayangan butuh belasan studio, seperti bioskop besar sungguhan.
+    private const STUDIO_PER_FORMAT = ['Regular 2D' => 8, 'Regular 3D' => 3, 'IMAX' => 2];
+
+    // Tidak semua film tayang di semua format. Pola ini dibagikan bergiliran ke tiap film.
+    private const POLA_FORMAT = [
+        ['Regular 2D'],
+        ['Regular 2D', 'Regular 3D'],
+        ['Regular 2D', 'IMAX'],
+        ['Regular 3D'],
+        ['Regular 2D'],
+        ['Regular 2D', 'Regular 3D', 'IMAX'],
+        ['Regular 2D'],
+        ['IMAX'],
+    ];
+
     public function run(): void
     {
         $film = Movie::where('is_showing', true)->orderBy('id')->get();
-        $studio = Studio::orderBy('id')->get();
 
-        if ($film->isEmpty() || $studio->isEmpty()) {
-            $this->command->error('Belum ada film yang sedang tayang atau belum ada studio.');
+        if ($film->isEmpty()) {
+            $this->command->error('Belum ada film yang sedang tayang.');
 
             return;
         }
 
+        $studioBaru = $this->lengkapiStudio();
+
+        // Jadwal mendatang yang belum dipesan siapa pun dibuat ulang. Yang sudah dipesan dibiarkan,
+        // supaya tiket penonton tetap sah; jadwal baru akan menghindarinya.
+        $dihapus = Showtime::where('show_time', '>=', now())->doesntHave('bookings')->delete();
+
+        $studio = Studio::orderBy('id')->get()->groupBy('format');
         $dibuat = 0;
-        $giliran = 0;
 
         for ($hari = 0; $hari < 6; $hari++) {
             $tanggal = now()->startOfDay()->addDays($hari);
 
-            foreach ($studio as $s) {
-                // Tiap studio memutar film bergantian dari jam 10:00. Film berikutnya mulai setelah
-                // film sebelumnya selesai ditambah jeda, dibulatkan ke atas ke kelipatan 10 menit.
-                $mulai = $tanggal->copy()->setTime(10, 0);
+            // Waktu kosong berikutnya di tiap studio. Studio dimulai bergantian 10:00, 10:20, 10:40
+            // supaya jam tayang tidak serempak semua.
+            $kosong = [];
+            foreach (Studio::orderBy('id')->get() as $i => $s) {
+                $kosong[$s->id] = $tanggal->copy()->setTime(10, ($i % 3) * 20);
+            }
 
-                while ($mulai->hour < 22) {
-                    $f = $film[$giliran % $film->count()];
-                    $giliran++;
-
-                    $bisa = $mulai->isFuture()
-                        && ! Showtime::bentrokDengan($s->id, $f->id, $mulai);
-
-                    if ($bisa) {
-                        Showtime::create([
-                            'movie_id' => $f->id,
-                            'studio_id' => $s->id,
-                            'show_time' => $mulai->copy(),
-                            'price' => $s->hargaUntuk($mulai),
-                        ]);
-                        $dibuat++;
+            // Film diberi satu tayangan per putaran, bergiliran. Dengan begitu tayangan satu film
+            // tersebar dari siang sampai malam, tidak menumpuk di jam yang sama.
+            for ($putaran = 0; $putaran < 5; $putaran++) {
+                foreach ($film as $urut => $f) {
+                    if ($putaran >= 3 + $urut % 3) {
+                        continue;
                     }
 
+                    $bolehDi = collect(self::POLA_FORMAT[$urut % count(self::POLA_FORMAT)])
+                        ->flatMap(fn ($format) => $studio->get($format, collect()));
+
+                    $dipakai = $bolehDi->sortBy(fn ($s) => [$kosong[$s->id]->timestamp, $s->id])->first();
+
+                    if (! $dipakai) {
+                        continue;
+                    }
+
+                    $mulai = $kosong[$dipakai->id]->copy();
                     $menit = ($f->duration_minutes ?: 120) + Showtime::JEDA_MENIT;
-                    $mulai->addMinutes((int) ceil($menit / 10) * 10);
+                    $kosong[$dipakai->id] = $mulai->copy()->addMinutes((int) ceil($menit / 10) * 10);
+
+                    // Tayangan terakhir paling lambat mulai 21:45.
+                    if ($mulai->gt($tanggal->copy()->setTime(21, 45)) || $mulai->isPast()) {
+                        continue;
+                    }
+
+                    if (Showtime::bentrokDengan($dipakai->id, $f->id, $mulai)) {
+                        continue;
+                    }
+
+                    Showtime::create([
+                        'movie_id' => $f->id,
+                        'studio_id' => $dipakai->id,
+                        'show_time' => $mulai,
+                        'price' => $dipakai->hargaUntuk($mulai),
+                    ]);
+                    $dibuat++;
                 }
             }
         }
 
-        $this->command->info("SELESAI: {$dibuat} jadwal dibuat untuk {$film->count()} film di {$studio->count()} studio.");
+        $this->command->info("SELESAI: {$studioBaru} studio ditambahkan, {$dihapus} jadwal lama dibuat ulang, {$dibuat} jadwal dibuat.");
+    }
+
+    // Menambah studio sampai jumlah per format terpenuhi, masing-masing 8 baris kali 10 kursi.
+    private function lengkapiStudio(): int
+    {
+        $ditambah = 0;
+
+        foreach (self::STUDIO_PER_FORMAT as $format => $jumlah) {
+            for ($ada = Studio::where('format', $format)->count(); $ada < $jumlah; $ada++) {
+                $studio = Studio::create([
+                    'name' => 'Studio ' . (Studio::count() + 1),
+                    'format' => $format,
+                    'capacity' => 80,
+                    'harga_biasa' => $format === 'IMAX' ? 75000 : ($format === 'Regular 3D' ? 55000 : 45000),
+                    'harga_akhir_pekan' => $format === 'IMAX' ? 90000 : ($format === 'Regular 3D' ? 65000 : 55000),
+                ]);
+
+                foreach (range('A', 'H') as $baris) {
+                    foreach (range(1, 10) as $nomor) {
+                        Seat::create(['studio_id' => $studio->id, 'seat_number' => $baris . $nomor]);
+                    }
+                }
+
+                $ditambah++;
+            }
+        }
+
+        return $ditambah;
     }
 }

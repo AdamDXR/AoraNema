@@ -175,6 +175,7 @@ Route::prefix('admin')->middleware(['auth', IsAdmin::class])->group(function () 
 
         $studio = \App\Models\Studio::create([
             'name' => $data['name'],
+            'format' => $data['format'],
             'capacity' => $data['baris'] * $data['per_baris'],
             'harga_biasa' => $data['harga_biasa'],
             'harga_akhir_pekan' => $data['harga_akhir_pekan'],
@@ -194,6 +195,7 @@ Route::prefix('admin')->middleware(['auth', IsAdmin::class])->group(function () 
 
         $studio->update([
             'name' => $data['name'],
+            'format' => $data['format'],
             'harga_biasa' => $data['harga_biasa'],
             'harga_akhir_pekan' => $data['harga_akhir_pekan'],
         ]);
@@ -261,16 +263,70 @@ Route::prefix('admin')->middleware(['auth', IsAdmin::class])->group(function () 
         ]);
     });
 
+    // Satu film di satu studio, untuk beberapa hari dan sampai lima jam sekaligus. Jam yang
+    // bertabrakan atau sudah lewat dilewati, sisanya tetap disimpan, lalu admin diberi tahu.
     Route::post('/jadwal', function (\Illuminate\Http\Request $request) {
-        $data = aturanJadwal($request);
+        $data = $request->validate([
+            'movie_id' => ['required', 'integer', 'exists:movies,id'],
+            'studio_id' => ['required', 'integer', 'exists:studios,id'],
+            'tanggal_mulai' => ['required', 'date', 'after_or_equal:today'],
+            'tanggal_selesai' => ['nullable', 'date', 'after_or_equal:tanggal_mulai', 'before_or_equal:' . now()->addDays(30)->format('Y-m-d')],
+            'jam' => ['required', 'array', 'max:5'],
+            'jam.*' => ['nullable', 'date_format:H:i'],
+        ], [], [
+            'movie_id' => 'film',
+            'studio_id' => 'studio',
+            'tanggal_mulai' => 'tanggal mulai',
+            'tanggal_selesai' => 'tanggal selesai',
+            'jam.*' => 'jam tayang',
+        ]);
 
-        if ($bentrok = jadwalBentrok($data['studio_id'], $data['movie_id'], $data['show_time'])) {
-            return back()->withInput()->with('gagal', $bentrok);
+        $jam = collect($data['jam'])->filter()->unique()->sort()->values();
+
+        if ($jam->isEmpty()) {
+            return back()->withInput()->withErrors(['jam' => 'Isi minimal satu jam tayang.']);
         }
 
-        \App\Models\Showtime::create($data);
+        $studio = \App\Models\Studio::find($data['studio_id']);
+        $mulai = \Illuminate\Support\Carbon::parse($data['tanggal_mulai']);
+        $selesai = \Illuminate\Support\Carbon::parse($data['tanggal_selesai'] ?? $data['tanggal_mulai']);
+        $namaHari = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 
-        return redirect('/admin/jadwal')->with('sukses', 'Jadwal ditambahkan.');
+        $dibuat = 0;
+        $dilewati = [];
+
+        for ($hari = $mulai->copy(); $hari->lte($selesai); $hari->addDay()) {
+            foreach ($jam as $j) {
+                $waktu = \Illuminate\Support\Carbon::parse($hari->format('Y-m-d') . ' ' . $j);
+                $label = $namaHari[$waktu->dayOfWeek] . ' ' . $waktu->format('d/m H:i');
+
+                if ($waktu->isPast()) {
+                    $dilewati[] = $label . ' sudah lewat';
+                    continue;
+                }
+
+                if ($bentrok = \App\Models\Showtime::bentrokDengan($studio->id, $data['movie_id'], $waktu)) {
+                    $dilewati[] = $label . ' bentrok dengan "' . ($bentrok->movie?->title ?? 'film lain') . '" jam ' . $bentrok->show_time->format('H:i');
+                    continue;
+                }
+
+                \App\Models\Showtime::create([
+                    'movie_id' => $data['movie_id'],
+                    'studio_id' => $studio->id,
+                    'show_time' => $waktu,
+                    'price' => $studio->hargaUntuk($waktu),
+                ]);
+                $dibuat++;
+            }
+        }
+
+        if ($dibuat === 0) {
+            return back()->withInput()->with('gagal', 'Tidak ada jadwal yang disimpan: ' . implode('; ', $dilewati) . '.');
+        }
+
+        return redirect('/admin/jadwal')
+            ->with('sukses', $dibuat . ' jadwal ditambahkan.')
+            ->with('gagal', $dilewati ? count($dilewati) . ' jam dilewati: ' . implode('; ', $dilewati) . '.' : null);
     });
 
     Route::put('/jadwal/{showtime}', function (\Illuminate\Http\Request $request, \App\Models\Showtime $showtime) {
@@ -344,6 +400,7 @@ function aturanStudio(\Illuminate\Http\Request $request, bool $terkunci = false)
 {
     $aturan = [
         'name' => ['required', 'string', 'max:255'],
+        'format' => ['required', \Illuminate\Validation\Rule::in(\App\Models\Studio::FORMAT)],
         'harga_biasa' => ['required', 'integer', 'min:0', 'max:1000000'],
         'harga_akhir_pekan' => ['required', 'integer', 'min:0', 'max:1000000'],
     ];

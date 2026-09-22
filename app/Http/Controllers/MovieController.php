@@ -16,7 +16,7 @@ class MovieController extends Controller
         $urut = in_array($request->query('urut'), ['az', 'za']) ? $request->query('urut') : 'terbaru';
         $tampilan = $request->query('tampilan') === 'baris' ? 'baris' : 'kotak';
 
-        $film = Movie::with('genres')
+        $film = Movie::with(['genres', 'jadwalMendatang.studio'])
             ->when($status === 'tayang', function ($query) {
                 $query->where('is_showing', true);
             })
@@ -78,17 +78,18 @@ class MovieController extends Controller
             }
         }
 
-        // 5. Jadwal tayang dari tabel showtimes pada tanggal itu, dikelompokkan per studio.
+        // 5. Jadwal tayang dari tabel showtimes pada tanggal itu, dikelompokkan per format layar.
+        // Beberapa studio bisa berformat sama; jam dari studio-studio itu digabung dalam satu baris.
         // Jam yang sudah lewat tidak ditampilkan karena sudah tidak bisa dipesan.
         $jadwal = $movie->showtimes()
             ->with('studio')
             ->whereBetween('show_time', [$tanggal->copy()->max(now()), $tanggal->copy()->endOfDay()])
             ->orderBy('show_time')
             ->get()
-            ->groupBy(fn ($s) => $s->studio->name)
-            // Urutan format tetap: Regular 2D, Regular 3D, IMAX, lalu studio lain menurut abjad.
-            // Tanpa ini urutannya ikut jam tayang pertama dan berpindah-pindah tiap hari.
-            ->sortBy(fn ($jam, $nama) => [array_search($nama, ['Regular 2D', 'Regular 3D', 'IMAX']) === false ? 1 : 0, array_search($nama, ['Regular 2D', 'Regular 3D', 'IMAX']), $nama]);
+            ->groupBy(fn ($s) => $s->studio->format)
+            // Urutan format tetap: Regular 2D, Regular 3D, IMAX. Tanpa ini urutannya ikut
+            // jam tayang pertama dan berpindah-pindah tiap hari.
+            ->sortBy(fn ($jam, $format) => array_search($format, \App\Models\Studio::FORMAT));
 
                 return view('film', compact('film', 'tanggal', 'jadwal'));
     }

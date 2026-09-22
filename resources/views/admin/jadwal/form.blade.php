@@ -60,21 +60,58 @@
                     <option value="">Pilih studio</option>
                     @foreach ($studio as $s)
                         <option value="{{ $s->id }}" @selected(old('studio_id', $jadwal->studio_id) == $s->id)>
-                            {{ $s->name }} ({{ $s->capacity }} kursi)
+                            {{ $s->label() }} ({{ $s->capacity }} kursi)
                         </option>
                     @endforeach
                 </select>
             </div>
 
-            <div>
+            @if ($jadwal->exists)
                 <div>
                     <label for="show_time" class="block text-sm">Waktu tayang</label>
                     <input type="datetime-local" id="show_time" name="show_time" required
-                           value="{{ old('show_time', $jadwal->show_time ? \Illuminate\Support\Carbon::parse($jadwal->show_time)->format('Y-m-d\TH:i') : '') }}"
+                           value="{{ old('show_time', \Illuminate\Support\Carbon::parse($jadwal->show_time)->format('Y-m-d\TH:i')) }}"
                            class="mt-2 block min-h-11 w-full rounded-md border border-nema-line bg-nema-surface px-4">
                 </div>
+            @else
+                {{-- Menambah jadwal bisa sekaligus untuk beberapa hari dan sampai lima jam,
+                     supaya admin tidak perlu menyimpan satu per satu. --}}
+                <div class="grid gap-6 sm:grid-cols-2">
+                    <div>
+                        <label for="tanggal_mulai" class="block text-sm">Dari tanggal</label>
+                        <input type="date" id="tanggal_mulai" name="tanggal_mulai" required
+                               min="{{ now()->format('Y-m-d') }}"
+                               value="{{ old('tanggal_mulai', now()->format('Y-m-d')) }}"
+                               class="mt-2 block min-h-11 w-full rounded-md border border-nema-line bg-nema-surface px-4">
+                    </div>
 
-            </div>
+                    <div>
+                        <label for="tanggal_selesai" class="block text-sm">Sampai tanggal</label>
+                        <input type="date" id="tanggal_selesai" name="tanggal_selesai" aria-describedby="tanggal-ket"
+                               min="{{ now()->format('Y-m-d') }}" max="{{ now()->addDays(30)->format('Y-m-d') }}"
+                               value="{{ old('tanggal_selesai') }}"
+                               class="mt-2 block min-h-11 w-full rounded-md border border-nema-line bg-nema-surface px-4">
+                        <p id="tanggal-ket" class="mt-2 text-xs text-nema-muted">Kosongkan kalau cuma satu hari.</p>
+                    </div>
+                </div>
+
+                <fieldset>
+                    <legend class="text-sm">Jam tayang, sampai lima</legend>
+                    <div class="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                        @for ($i = 0; $i < 5; $i++)
+                            <label class="block">
+                                <span class="sr-only">Jam ke-{{ $i + 1 }}</span>
+                                <input type="time" name="jam[]" @if ($i === 0) required @endif
+                                       value="{{ old('jam.' . $i) }}"
+                                       class="block min-h-11 w-full rounded-md border border-nema-line bg-nema-surface px-3">
+                            </label>
+                        @endfor
+                    </div>
+                    <p class="mt-2 text-xs text-nema-muted">
+                        Jam yang kosong diabaikan. Jam yang bertabrakan dengan film lain dilewati, sisanya tetap disimpan.
+                    </p>
+                </fieldset>
+            @endif
 
             <p class="text-sm text-nema-muted">
                 Harga per kursi diambil otomatis dari tarif studio: hari biasa, atau akhir pekan

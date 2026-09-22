@@ -47,8 +47,20 @@
                        value="{{ old('name', $studio->name) }}"
                        class="mt-2 block min-h-11 w-full rounded-md border border-nema-line bg-nema-surface px-4">
                 <p class="mt-2 text-xs text-nema-muted">
-                    Nama ini tampil ke penonton sebagai format layar di halaman film, jadi tulis
-                    formatnya, misalnya Regular 2D, Regular 3D, atau IMAX.
+                    Contoh: Studio 1. Nama ini tampil di tiket supaya penonton tahu pintu mana yang dituju.
+                </p>
+            </div>
+
+            <div>
+                <label for="format" class="block text-sm">Format layar</label>
+                <select id="format" name="format" required
+                        class="mt-2 block min-h-11 w-full rounded-md border border-nema-line bg-nema-surface px-4">
+                    @foreach (\App\Models\Studio::FORMAT as $f)
+                        <option value="{{ $f }}" @selected(old('format', $studio->format ?? 'Regular 2D') === $f)>{{ $f }}</option>
+                    @endforeach
+                </select>
+                <p class="mt-2 text-xs text-nema-muted">
+                    Di halaman film, jam tayang dikelompokkan menurut format ini. Beberapa studio boleh berformat sama.
                 </p>
             </div>
 
