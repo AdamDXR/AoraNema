@@ -75,7 +75,7 @@
         </button>
         
         <p class="text-center text-sm text-nema-muted">
-            Sudah punya akun? <a href="{{ url('/masuk') }}" class="text-nema-accent hover:underline">Masuk di sini</a>
+            Sudah punya akun? <a href="{{ url('/masuk') }}" class="inline-flex min-h-11 items-center text-nema-accent hover:underline">Masuk di sini</a>
         </p>
     </form>
 </section>

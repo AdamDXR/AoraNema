@@ -13,7 +13,7 @@
             {{ $pesanan->total() }} pesanan tercatat. Halaman ini hanya membaca, tidak mengubah apa pun.
         </p>
 
-        <div class="mt-8 overflow-x-auto">
+        <div class="relative mt-8 overflow-x-auto">
             <table class="w-full min-w-3xl text-left text-sm">
                 <thead class="border-b border-nema-line/40 text-nema-muted">
                     <tr>
@@ -68,7 +68,7 @@
         </div>
 
         <div class="mt-8">
-            {{ $pesanan->links() }}
+            {{ $pesanan->links('partials.halaman') }}
         </div>
 
     </div>

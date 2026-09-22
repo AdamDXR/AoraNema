@@ -155,8 +155,10 @@
                                 <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                                     <h3 class="text-base">{{ $layar }}</h3>
                                     {{-- Harga ditentukan studio dan harinya, jadi semua jam di baris ini sama harganya. --}}
+                                    {{-- Diambil dari jam yang masih bisa dipesan. Jam yang sudah lewat bisa menyimpan
+                                         harga lama kalau tarif studionya diubah setelah itu. --}}
                                     <p class="text-sm text-nema-muted">
-                                        Rp {{ number_format($daftarJam->first()->price, 0, ',', '.') }}
+                                        Rp {{ number_format(($daftarJam->first(fn ($j) => $j->show_time->isFuture()) ?? $daftarJam->first())->price, 0, ',', '.') }}
                                     </p>
                                 </div>
 

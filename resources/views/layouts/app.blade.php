@@ -14,7 +14,7 @@
     <header class="sticky top-0 z-50 border-b border-nema-line/40 bg-nema-bg/90 backdrop-blur">
         <div class="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
 
-            <a href="{{ url('/') }}" class="font-display text-2xl font-semibold tracking-tight">
+            <a href="{{ url('/') }}" class="inline-flex min-h-11 items-center font-display text-2xl font-semibold tracking-tight">
                 Aora<span class="text-nema-accent">Nema</span>
             </a>
 
@@ -36,7 +36,12 @@
                     <details data-menu-akun class="relative">
                         <summary
                             class="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 px-2 text-sm text-nema-text transition-colors hover:text-white sm:px-3 [&::-webkit-details-marker]:hidden">
-                            <span class="max-w-24 truncate sm:max-w-40">{{ Auth::user()->name }}</span>
+                            {{-- Di HP nama akun diganti inisial supaya logo, Beranda, dan Film tetap muat
+                                 dalam satu baris. Nama lengkapnya tetap dibacakan pembaca layar. --}}
+                            <span class="grid size-8 place-items-center rounded-full bg-nema-surface-2 text-sm font-semibold sm:hidden" aria-hidden="true">
+                                {{ mb_strtoupper(mb_substr(Auth::user()->name, 0, 1)) }}
+                            </span>
+                            <span class="sr-only sm:not-sr-only sm:max-w-40 sm:truncate">{{ Auth::user()->name }}</span>
                             <svg class="size-4 shrink-0 text-nema-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <path d="m6 9 6 6 6-6" />

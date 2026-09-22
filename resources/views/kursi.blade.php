@@ -33,7 +33,14 @@
             ->groupBy('baris');
 
         // Lorong di tengah baris terpanjang.
-        $lorongSetelah = intdiv($barisKursi->max(fn ($b) => $b->count()) ?? 0, 2);
+        $kursiTerbanyak = $barisKursi->max(fn ($b) => $b->count()) ?? 0;
+        $lorongSetelah = intdiv($kursiTerbanyak, 2);
+
+        // Kolom denah: huruf baris, kursi kiri, lorong, kursi kanan. Lebar kursi mengikuti layar,
+        // paling kecil 24 piksel supaya sepuluh kursi per baris muat di HP tanpa digeser, dan paling
+        // besar 44 piksel di layar lebar. Studio yang barisnya sangat panjang tetap bisa digeser.
+        $kolomKursi = 'minmax(1.5rem, 2.75rem)';
+        $kolomDenah = '1.25rem repeat(' . $lorongSetelah . ', ' . $kolomKursi . ') 1rem repeat(' . ($kursiTerbanyak - $lorongSetelah) . ', ' . $kolomKursi . ')';
 
         $filmSlug = Str::slug($film->title) . '-' . $film->id;
 
@@ -60,11 +67,11 @@
                     <p class="mt-3 text-center text-xs text-nema-muted">Layar</p>
                 </div>
 
-                <div class="no-scrollbar mt-10 overflow-x-auto pb-2">
-                    <div class="mx-auto w-max space-y-2">
+                <div class="mt-10 overflow-x-auto pb-2">
+                    <div class="mx-auto max-w-max space-y-1.5 sm:space-y-2">
                         @foreach ($barisKursi as $b => $kursiBaris)
-                            <div class="flex items-center gap-2">
-                                <span class="w-5 text-center text-xs text-nema-muted">{{ $b }}</span>
+                            <div class="grid items-center gap-1 sm:gap-2" style="grid-template-columns: {{ $kolomDenah }}">
+                                <span class="text-center text-xs text-nema-muted">{{ $b }}</span>
 
                                 @foreach ($kursiBaris as $k)
                                     @php
@@ -76,12 +83,12 @@
                                     <button type="button" data-kursi="{{ $kode }}" aria-pressed="false"
                                             @disabled($sudahTerisi)
                                             aria-label="Kursi {{ $kode }}{{ $sudahTerisi ? ', sudah terisi' : '' }}"
-                                            class="size-11 rounded-md border text-xs transition-colors {{ $sudahTerisi ? 'cursor-not-allowed border-transparent bg-nema-surface-2 text-nema-muted/40' : 'border-nema-line hover:bg-nema-surface aria-pressed:border-nema-accent aria-pressed:bg-nema-maroon aria-pressed:text-white' }}">
+                                            class="aspect-square w-full rounded-md border text-[11px] transition-colors sm:text-xs {{ $sudahTerisi ? 'cursor-not-allowed border-transparent bg-nema-surface-2 text-nema-muted/40' : 'border-nema-line hover:bg-nema-surface aria-pressed:border-nema-accent aria-pressed:bg-nema-maroon aria-pressed:text-white' }}">
                                         {{ $n }}
                                     </button>
 
                                     @if ($loop->iteration === $lorongSetelah && ! $loop->last)
-                                        <span class="w-6" aria-hidden="true"></span>
+                                        <span aria-hidden="true"></span>
                                     @endif
                                 @endforeach
                             </div>
