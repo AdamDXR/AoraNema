@@ -22,11 +22,15 @@
         $akhirPekan = in_array($tanggal->dayOfWeek, [5, 6, 0]);
         $harga = $tarif[$layar][$akhirPekan ? 'akhirPekan' : 'biasa'];
 
-        // Denah contoh: 8 baris, 10 kursi per baris, lorong setelah kursi kelima.
-        // Tabel seats sekarang cuma punya seat_number berupa teks seperti "A1", jadi
-        // baris dan nomornya masih dibentuk di sini. Nanti datang dari database.
-        $barisKursi = range('A', 'H');
-        $nomorKursi = range(1, 10);
+        // Denah dibentuk dari kursi asli studio. seat_number berupa teks seperti "A1", jadi
+        // dipecah jadi huruf baris dan nomor, lalu diurutkan supaya "A10" tidak muncul sebelum "A2".
+        $barisKursi = $studio->seats
+            ->map(fn ($s) => ['kode' => $s->seat_number, 'baris' => preg_replace('/\d+$/', '', $s->seat_number), 'nomor' => (int) preg_replace('/^\D+/', '', $s->seat_number)])
+            ->sortBy([['baris', 'asc'], ['nomor', 'asc']])
+            ->groupBy('baris');
+
+        // Lorong di tengah baris terpanjang.
+        $lorongSetelah = intdiv($barisKursi->max(fn ($b) => $b->count()) ?? 0, 2);
 
         $filmSlug = Str::slug($film->title) . '-' . $film->id;
 
@@ -55,13 +59,14 @@
 
                 <div class="no-scrollbar mt-10 overflow-x-auto pb-2">
                     <div class="mx-auto w-max space-y-2">
-                        @foreach ($barisKursi as $b)
+                        @foreach ($barisKursi as $b => $kursiBaris)
                             <div class="flex items-center gap-2">
                                 <span class="w-5 text-center text-xs text-nema-muted">{{ $b }}</span>
 
-                                @foreach ($nomorKursi as $n)
+                                @foreach ($kursiBaris as $k)
                                     @php
-                                        $kode = $b . $n;
+                                        $kode = $k['kode'];
+                                        $n = $k['nomor'];
                                         $sudahTerisi = in_array($kode, $kursiTerisi ?? []);
                                     @endphp
 
@@ -72,7 +77,7 @@
                                         {{ $n }}
                                     </button>
 
-                                    @if ($n === 5)
+                                    @if ($loop->iteration === $lorongSetelah && ! $loop->last)
                                         <span class="w-6" aria-hidden="true"></span>
                                     @endif
                                 @endforeach
@@ -101,7 +106,7 @@
                     <div class="flex gap-4">
                         <div class="w-16 shrink-0 sm:w-20">
                             @if ($adaPoster)
-                                <img src="https://image.tmdb.org/t/p/w500{{ $film->poster_url }}"
+                                <img src="{{ $film->poster_url }}"
                                      alt="Poster film {{ $film->title }}"
                                      class="aspect-2/3 w-full rounded-lg object-cover">
                             @else

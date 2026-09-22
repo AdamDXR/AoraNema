@@ -53,9 +53,9 @@
         <h1 class="mt-4 text-2xl sm:text-3xl">Pembayaran</h1>
 
         @if(session('error'))
-            <div class="mt-4 rounded-md bg-red-50 p-4 border border-red-200">
-                <p class="text-sm text-red-700">{{ session('error') }}</p>
-            </div>
+            <p role="alert" class="mt-4 rounded-lg border border-nema-accent bg-nema-surface p-4 text-sm">
+                {{ session('error') }}
+            </p>
         @endif
 
         <form action="{{ url('/proses-bayar/' . $slugUrl) }}" method="POST"
@@ -95,7 +95,7 @@
                     <div class="flex gap-4">
                         <div class="w-16 shrink-0">
                             @if ($adaPoster)
-                                <img src="https://image.tmdb.org/t/p/w500{{ $film->poster_url }}"
+                                <img src="{{ $film->poster_url }}"
                                      alt="Poster film {{ $film->title }}"
                                      class="aspect-2/3 w-full rounded-lg object-cover">
                             @else

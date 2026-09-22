@@ -191,17 +191,18 @@ class BookingController extends Controller
             ]
         ];
 
+        // Simpan record Payment, terhubung ke booking yang pertama (karena DB schema kita saat ini 1:1 Booking-Payment, tapi aslinya 1 Transaction = Many Bookings)
+        // Dicatat sebelum Midtrans dipanggil, supaya cara bayar yang dipilih tetap tersimpan walaupun Midtrans gagal.
+        Payment::create([
+            'booking_id' => $bookingIds[0],
+            'order_id' => $orderId,
+            'gross_amount' => $grossAmount,
+            'payment_type' => $metode,
+            'transaction_status' => 'pending'
+        ]);
+
         try {
             $snapUrl = Snap::createTransaction($params)->redirect_url;
-            
-            // Simpan record Payment, terhubung ke booking yang pertama (karena DB schema kita saat ini 1:1 Booking-Payment, tapi aslinya 1 Transaction = Many Bookings)
-            Payment::create([
-                'booking_id' => $bookingIds[0], 
-                'order_id' => $orderId,
-                'gross_amount' => $grossAmount,
-                'payment_type' => $metode,
-                'transaction_status' => 'pending'
-            ]);
 
             // Untuk simulasi ini, kita redirect ke Midtrans.
             // Di lingkungan nyata, kita butuh halaman callback. Tapi untuk tes ini, kita redirect lgsg.
@@ -222,7 +223,10 @@ class BookingController extends Controller
             Booking::where('booking_code', $bookingCode)->update(['status' => 'paid']);
             Payment::where('order_id', $orderId)->update(['transaction_status' => 'settlement']);
             
-            return redirect('/tiket/' . $bookingCode)->with('warning', 'Peringatan: Midtrans gagal diakses (' . $e->getMessage() . '). Menggunakan simulasi lokal.');
+            // Pesan teknisnya dicatat di log saja. Penonton cukup tahu bahwa ini tiket uji coba.
+            report($e);
+
+            return redirect('/tiket/' . $bookingCode)->with('warning', 'Pembayaran belum tersambung ke Midtrans, jadi pesanan ini dianggap lunas tanpa ditagih. Tiket ini hanya untuk uji coba.');
         }
     }
 
@@ -235,6 +239,10 @@ class BookingController extends Controller
             abort(404, 'Tiket tidak ditemukan');
         }
 
+        // Tiket hanya bisa dibuka pemesannya dan admin. Tanpa ini, siapa pun yang login
+        // dan tahu kodenya bisa melihat tiket orang lain.
+        abort_unless($bookings->first()->user_id === $request->user()->id || $request->user()->isAdmin(), 404);
+
         $firstBooking = $bookings->first();
         $film = $firstBooking->showtime->movie;
         $tanggalCarbon = $firstBooking->showtime->show_time;
@@ -246,7 +254,8 @@ class BookingController extends Controller
         
         $akhirPekan = in_array($tanggalCarbon->dayOfWeek, [0, 5, 6]);
 
-        $namaMetode = $firstBooking->payment->payment_type ?? 'Midtrans';
+        $daftarMetode = ['qris' => 'QRIS', 'va' => 'Transfer Bank', 'ewallet' => 'Dompet Digital'];
+        $namaMetode = $daftarMetode[$firstBooking->payment->payment_type ?? ''] ?? 'Midtrans';
         $total = $firstBooking->payment->gross_amount ?? $bookings->sum('price');
         $kode = $booking_code;
 
