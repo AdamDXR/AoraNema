@@ -5,6 +5,7 @@ use App\Http\Controllers\MovieController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookingController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Middleware\IsAdmin;
 
 // Beberapa pemeriksaan dipakai lebih dari satu halaman, jadi ditaruh sekali di sini.
 
@@ -69,68 +70,29 @@ $pesanan = function (string $slug, string $tampilan) use ($ambilFilm, $ambilTang
     return view($tampilan, compact('film', 'tanggal', 'layar', 'jam', 'kursi', 'akhirPekan', 'namaMetode'));
 };
 
-Route::get('/', function () {
-    return view('beranda');
+Route::get('/', [HomeController::class, 'index']);
+
+Route::get('/film', [MovieController::class, 'index']);
+
+Route::get('/film/{slug}', [MovieController::class, 'show'])->where('slug', '[a-z0-9-]+');
+
+Route::middleware(['auth', \App\Http\Middleware\IsUser::class])->group(function () {
+    Route::get('/kursi/{slug}', [BookingController::class, 'pilihKursi'])->where('slug', '[a-z0-9-]+');
+    Route::get('/bayar/{slug}', [BookingController::class, 'halamanBayar'])->where('slug', '[a-z0-9-]+');
+    Route::post('/proses-bayar/{slug}', [BookingController::class, 'prosesBayar']);
 });
 
-Route::get('/film', function () {
-    $semua = require resource_path('data/film.php');
-
-    $cari = trim((string) request('cari'));
-    $genre = (string) request('genre');
-    $status = in_array(request('status'), ['tayang', 'segera']) ? request('status') : 'semua';
-
-    $daftarGenre = collect($semua)->pluck('genre')->unique()->sort()->values();
-
-    // Genre yang tidak ada di daftar diabaikan, jadi alamat ngawur tidak menghasilkan
-    // halaman kosong yang membingungkan.
-    if (! $daftarGenre->contains($genre)) {
-        $genre = '';
-    }
-
-    $film = collect($semua)
-        ->when($status === 'tayang', fn ($c) => $c->filter(fn ($f) => $f['mulai'] === null))
-        ->when($status === 'segera', fn ($c) => $c->filter(fn ($f) => $f['mulai'] !== null))
-        ->when($genre !== '', fn ($c) => $c->filter(fn ($f) => $f['genre'] === $genre))
-        ->when($cari !== '', fn ($c) => $c->filter(
-            fn ($f) => str_contains(mb_strtolower($f['judul']), mb_strtolower($cari))
-        ))
-        ->values()
-        ->all();
-
-    return view('daftar-film', compact('film', 'daftarGenre', 'cari', 'genre', 'status'));
+Route::middleware('auth')->group(function () {
+    Route::get('/tiket/{booking_code}', [BookingController::class, 'halamanTiket']);
+    Route::post('/keluar', [AuthController::class, 'logout']);
 });
 
-Route::get('/film/{slug}', function (string $slug) use ($ambilFilm, $ambilTanggal) {
-    $film = $ambilFilm($slug);
-    $tanggal = $ambilTanggal();
-
-    return view('film', compact('film', 'tanggal'));
-})->where('slug', '[a-z0-9-]+');
-
-Route::get('/kursi/{slug}', function (string $slug) use ($ambilFilm, $ambilTanggal, $ambilLayarDanJam) {
-    $film = $ambilFilm($slug);
-
-    abort_if($film['mulai'] !== null, 404);
-
-    [$layar, $jam] = $ambilLayarDanJam();
-
-    $jumlah = max(1, min(6, (int) request('jumlah', 1)));
-
-    $tanggal = $ambilTanggal();
-    $akhirPekan = in_array($tanggal->dayOfWeek, [5, 6, 0]);
-
-    return view('kursi', compact('film', 'tanggal', 'layar', 'jam', 'jumlah', 'akhirPekan'));
-})->where('slug', '[a-z0-9-]+');
-
-Route::get('/bayar/{slug}', fn (string $slug) => $pesanan($slug, 'bayar'))
-    ->where('slug', '[a-z0-9-]+');
-
-Route::get('/tiket/{slug}', fn (string $slug) => $pesanan($slug, 'tiket'))
-    ->where('slug', '[a-z0-9-]+');
-
-Route::get('/masuk', function () {
-    return view('masuk');
+Route::middleware('guest')->group(function () {
+    Route::get('/masuk', [AuthController::class, 'showLoginForm'])->name('login');
+    Route::post('/masuk', [AuthController::class, 'login']);
+    
+    Route::get('/daftar', [AuthController::class, 'showRegisterForm']);
+    Route::post('/daftar', [AuthController::class, 'register']);
 });
 
 // ---------------------------------------------------------------------------
@@ -140,7 +102,7 @@ Route::get('/masuk', function () {
 // controller yang sedang dikerjakan di branch adam/controller.
 // ---------------------------------------------------------------------------
 
-Route::prefix('admin')->group(function () {
+Route::prefix('admin')->middleware(['auth', IsAdmin::class])->group(function () {
 
     Route::get('/', function () {
         return redirect('/admin/film');

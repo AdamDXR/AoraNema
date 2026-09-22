@@ -1,6 +1,13 @@
+@php
+    /**
+     * @var \App\Models\Movie $film
+     * @var \Carbon\Carbon $tanggal
+     */
+@endphp
+
 @extends('layouts.app')
 
-@section('judul', 'Pilih kursi, ' . $film['judul'])
+@section('judul', 'Pilih kursi, ' . $film->title)
 
 @section('konten')
 
@@ -12,6 +19,7 @@
         $tanggalTeks = $namaHari[$tanggal->dayOfWeek] . ', ' . (int) $hr . ' ' . $namaBulan[(int) $bl];
 
         $tarif = require resource_path('data/tarif.php');
+        $akhirPekan = in_array($tanggal->dayOfWeek, [5, 6, 0]);
         $harga = $tarif[$layar][$akhirPekan ? 'akhirPekan' : 'biasa'];
 
         // Denah contoh: 8 baris, 10 kursi per baris, lorong setelah kursi kelima.
@@ -20,25 +28,14 @@
         $barisKursi = range('A', 'H');
         $nomorKursi = range(1, 10);
 
-        // Kursi terisi dibuat tetap untuk tiap kombinasi film, tanggal, jam, dan layar,
-        // bukan acak, supaya tidak berubah-ubah setiap halaman dimuat ulang.
-        $benih = crc32($film['slug'] . $tanggal->format('Y-m-d') . $jam . $layar);
+        $filmSlug = Str::slug($film->title) . '-' . $film->id;
 
-        $terisi = [];
-        foreach ($barisKursi as $i => $b) {
-            foreach ($nomorKursi as $n) {
-                if (($benih + $i * 31 + $n * 17) % 7 < 2) {
-                    $terisi[] = $b . $n;
-                }
-            }
-        }
-
-        $adaPoster = file_exists(public_path('img/' . $film['poster']));
+        $adaPoster = !empty($film->poster_url);
     @endphp
 
     <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6">
 
-        <a href="{{ url('/film/' . $film['slug']) }}?tanggal={{ $tanggal->format('Y-m-d') }}"
+        <a href="{{ url('/film/' . $filmSlug) }}?tanggal={{ $tanggal->format('Y-m-d') }}"
            class="inline-flex min-h-11 items-center text-sm text-nema-muted transition-colors hover:text-nema-text">
             &larr;&nbsp; Ganti jadwal
         </a>
@@ -65,7 +62,7 @@
                                 @foreach ($nomorKursi as $n)
                                     @php
                                         $kode = $b . $n;
-                                        $sudahTerisi = in_array($kode, $terisi);
+                                        $sudahTerisi = in_array($kode, $kursiTerisi ?? []);
                                     @endphp
 
                                     <button type="button" data-kursi="{{ $kode }}" aria-pressed="false"
@@ -104,8 +101,8 @@
                     <div class="flex gap-4">
                         <div class="w-16 shrink-0 sm:w-20">
                             @if ($adaPoster)
-                                <img src="{{ asset('img/' . $film['poster']) }}"
-                                     alt="Poster film {{ $film['judul'] }}"
+                                <img src="https://image.tmdb.org/t/p/w500{{ $film->poster_url }}"
+                                     alt="Poster film {{ $film->title }}"
                                      class="aspect-2/3 w-full rounded-lg object-cover">
                             @else
                                 <div class="aspect-2/3 w-full rounded-lg bg-nema-surface-2"></div>
@@ -113,7 +110,7 @@
                         </div>
 
                         <div class="min-w-0">
-                            <h2 class="text-lg leading-tight">{{ $film['judul'] }}</h2>
+                            <h2 class="text-lg leading-tight">{{ $film->title }}</h2>
                             <p class="mt-1 text-sm text-nema-muted">{{ $layar }}</p>
                             <p class="mt-1 text-sm text-nema-muted">{{ $tanggalTeks }} &middot; {{ $jam }}</p>
                         </div>
@@ -166,7 +163,7 @@
             const total = document.querySelector('[data-total]');
             const lanjut = document.querySelector('[data-lanjut]');
 
-            const dasar = @json(url('/bayar/' . $film['slug']));
+            const dasar = @json(url('/bayar/' . $filmSlug));
             const bawaan = {
                 layar: @json($layar),
                 jam: @json($jam),

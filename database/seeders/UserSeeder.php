@@ -18,6 +18,7 @@ class UserSeeder extends Seeder
             'name' => 'Admin AoraNema',
             'email' => 'admin@aoranema.com',
             'password' => Hash::make('password123'),
+            'role' => 'admin',
         ]);
 
         // Buat akun Penonton

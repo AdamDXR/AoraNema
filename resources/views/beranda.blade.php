@@ -44,9 +44,6 @@
         };
     @endphp
 
-    <p class="border-b border-nema-line/40 bg-nema-surface px-4 py-3 text-center text-sm text-nema-muted sm:px-6">
-        Film di halaman ini masih data contoh, belum tersambung ke database.
-    </p>
 
     <section>
 
@@ -122,8 +119,8 @@
 
                             <a href="{{ url('/film/' . $sorotan['slug']) }}"
                                 class="group block w-full max-w-xs shrink-0 sm:w-56 sm:max-w-none lg:w-72">
-                                @if (file_exists(public_path('img/' . $sorotan['poster'])))
-                                    <img src="{{ asset('img/' . $sorotan['poster']) }}"
+                                @if ($sorotan['poster'])
+                                    <img src="{{ $sorotan['poster'] }}"
                                         alt="Poster film {{ $sorotan['judul'] }}"
                                         class="aspect-2/3 w-full rounded-xl object-cover transition-transform duration-300 group-hover:scale-[1.02]">
                                 @else

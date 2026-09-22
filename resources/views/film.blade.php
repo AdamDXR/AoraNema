@@ -75,9 +75,7 @@
         $adaPoster = !empty($film['poster']);
     @endphp
 
-    <p class="border-b border-nema-line/40 bg-nema-surface px-4 py-3 text-center text-sm text-nema-muted sm:px-6">
-        Data film di halaman ini masih contoh, belum tersambung ke database.
-    </p>
+
 
     <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
 
@@ -210,14 +208,20 @@
 
                                     </div>
 
-                                    <a data-lanjut
-                                        class="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-nema-maroon px-6 font-medium text-white transition-colors hover:bg-nema-maroon-hover sm:w-auto">
-                                        Lanjut pilih kursi
-                                    </a>
-
-                                    <p class="mt-3 text-xs text-nema-muted">
-                                        Maksimal 6 tiket sekali pesan. Kursi dipilih setelah kamu masuk.
-                                    </p>
+                                    @if(auth()->check() && auth()->user()->isAdmin())
+                                        <div class="mt-5 rounded-md border border-nema-accent/30 bg-nema-accent/10 p-3 text-sm text-nema-accent">
+                                            Admin hanya dapat melihat halaman ini dan tidak dapat memesan tiket.
+                                        </div>
+                                    @else
+                                        <a data-lanjut
+                                            class="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-nema-maroon px-6 font-medium text-white transition-colors hover:bg-nema-maroon-hover sm:w-auto">
+                                            Lanjut pilih kursi
+                                        </a>
+    
+                                        <p class="mt-3 text-xs text-nema-muted">
+                                            Maksimal 6 tiket sekali pesan. Kursi dipilih setelah kamu masuk.
+                                        </p>
+                                    @endif
 
                                 </div>
 

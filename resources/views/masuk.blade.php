@@ -35,6 +35,10 @@
             class="mt-2 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-nema-maroon px-5 font-medium text-white transition-colors hover:bg-nema-maroon-hover">
             Masuk
         </button>
+
+        <p class="text-center text-sm text-nema-muted">
+            Belum punya akun? <a href="{{ url('/daftar') }}" class="text-nema-accent hover:underline">Daftar di sini</a>
+        </p>
     </form>
 </section>
 @endsection

@@ -70,31 +70,36 @@
             <div class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-5">
                 @foreach ($film as $f)
                     <article class="group relative">
-                        <a href="{{ url('/film/' . $f['slug']) }}" class="block">
+                        {{-- Membuat URL slug otomatis dari judul dan ID, contoh: /film/coyote-vs-acme-3 --}}
+                        <a href="{{ url('/film/' . Str::slug($f->title) . '-' . $f->id) }}" class="block">
                             <div class="relative overflow-hidden rounded-lg bg-nema-surface-2">
-                                @if (file_exists(public_path('img/' . $f['poster'])))
-                                    <img src="{{ asset('img/' . $f['poster']) }}"
-                                         alt="Poster film {{ $f['judul'] }}"
-                                         class="aspect-2/3 w-full object-cover transition-transform duration-300 group-hover:scale-105">
+                                
+                                {{-- Mengecek apakah film punya poster_url dari TMDB --}}
+                                @if ($f->poster_url)
+                                    <img src="https://image.tmdb.org/t/p/w500{{ $f->poster_url }}" alt="Poster {{ $f->title }}" class="w-full object-cover">
 
-                                    {{-- Kabut gelap dari dasar, supaya judul tetap terbaca di atas poster seterang apa pun. --}}
+                                    {{-- Kabut gelap dari dasar --}}
                                     <div class="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-black/95 via-black/70 to-transparent"></div>
 
                                     <h2 class="absolute inset-x-0 bottom-0 p-3 text-base leading-tight text-white">
-                                        {{ $f['judul'] }}
+                                        {{ $f->title }}
                                     </h2>
                                 @else
                                     <div class="flex aspect-2/3 flex-col justify-end gap-2 p-3">
                                         <span class="text-xs text-nema-muted">Poster belum tersedia</span>
-                                        <h2 class="text-base leading-tight">{{ $f['judul'] }}</h2>
+                                        <h2 class="text-base leading-tight">{{ $f->title }}</h2>
                                     </div>
                                 @endif
                             </div>
                         </a>
 
                         <p class="mt-2 text-xs text-nema-muted">
-                            {{ $f['genre'] }} &middot; {{ $f['usia'] }}
-                            @if ($f['mulai'])
+                            {{-- Mengambil nama genre yang berelasi dan menggabungkannya dengan koma --}}
+                            {{ $f->genres->pluck('name')->join(', ') ?? 'Tanpa Genre' }} 
+                            &middot; {{ $f->duration_minutes }} menit
+                            
+                            {{-- is_showing bernilai false berarti Segera Tayang --}}
+                            @if (!$f->is_showing)
                                 &middot; segera
                             @endif
                         </p>
