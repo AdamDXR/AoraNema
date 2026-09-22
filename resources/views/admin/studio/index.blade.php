@@ -41,6 +41,7 @@
                     <tr>
                         <th class="py-3 pr-4 font-normal">Nama</th>
                         <th class="py-3 pr-4 font-normal">Kursi</th>
+                        <th class="py-3 pr-4 font-normal">Harga biasa / akhir pekan</th>
                         <th class="py-3 pr-4 font-normal">Jadwal terpasang</th>
                         <th class="py-3 font-normal"><span class="sr-only">Tindakan</span></th>
                     </tr>
@@ -56,6 +57,11 @@
                                 @if ($s->seats_count !== $s->capacity)
                                     <span class="text-nema-accent">(kapasitas tercatat {{ $s->capacity }})</span>
                                 @endif
+                            </td>
+
+                            <td class="py-4 pr-4 text-nema-muted">
+                                Rp {{ number_format($s->harga_biasa, 0, ',', '.') }} /
+                                Rp {{ number_format($s->harga_akhir_pekan, 0, ',', '.') }}
                             </td>
 
                             <td class="py-4 pr-4 text-nema-muted">{{ $s->showtimes_count }}</td>
@@ -82,7 +88,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="py-10 text-center text-nema-muted">
+                            <td colspan="5" class="py-10 text-center text-nema-muted">
                                 Belum ada studio.
                                 <a href="{{ url('/admin/studio/baru') }}" class="text-nema-accent underline">Tambah studio pertama</a>.
                                 Jadwal tayang tidak bisa dibuat sebelum ada studio.

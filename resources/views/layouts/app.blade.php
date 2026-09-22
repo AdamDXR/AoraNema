@@ -20,6 +20,11 @@
 
             <div class="flex items-center gap-1 sm:gap-3">
 
+                <a href="{{ url('/') }}" @if (request()->is('/')) aria-current="page" @endif
+                    class="inline-flex min-h-11 items-center px-2 text-sm transition-colors sm:px-3 {{ request()->is('/') ? 'text-nema-text' : 'text-nema-muted hover:text-nema-text' }}">
+                    Beranda
+                </a>
+
                 <a href="{{ url('/film') }}" @if (request()->is('film')) aria-current="page" @endif
                     class="inline-flex min-h-11 items-center px-2 text-sm transition-colors sm:px-3 {{ request()->is('film') ? 'text-nema-text' : 'text-nema-muted hover:text-nema-text' }}">
                     Film

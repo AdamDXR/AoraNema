@@ -71,6 +71,29 @@
                 </div>
             </div>
 
+            <fieldset class="grid gap-6 sm:grid-cols-2">
+                <legend class="mb-3 text-sm">Harga per kursi, dalam rupiah tanpa titik</legend>
+
+                <div>
+                    <label for="harga_biasa" class="block text-sm text-nema-muted">Senin sampai Kamis</label>
+                    <input type="number" id="harga_biasa" name="harga_biasa" min="0" max="1000000" step="1000" required
+                           value="{{ old('harga_biasa', $studio->harga_biasa ?? 45000) }}"
+                           class="mt-2 block min-h-11 w-full rounded-md border border-nema-line bg-nema-surface px-4">
+                </div>
+
+                <div>
+                    <label for="harga_akhir_pekan" class="block text-sm text-nema-muted">Jumat sampai Minggu</label>
+                    <input type="number" id="harga_akhir_pekan" name="harga_akhir_pekan" min="0" max="1000000" step="1000" required
+                           value="{{ old('harga_akhir_pekan', $studio->harga_akhir_pekan ?? 55000) }}"
+                           class="mt-2 block min-h-11 w-full rounded-md border border-nema-line bg-nema-surface px-4">
+                </div>
+            </fieldset>
+
+            <p class="text-sm text-nema-muted">
+                Mengubah harga ikut mengubah jadwal studio ini yang belum lewat. Harga di pesanan
+                yang sudah dibuat tidak berubah.
+            </p>
+
             <p class="text-sm text-nema-muted">
                 Kursi dibuat otomatis dari dua angka di atas, misalnya 8 baris dikali 10 kursi
                 menghasilkan A1 sampai H10. Kapasitas studio ikut dihitung dari situ.

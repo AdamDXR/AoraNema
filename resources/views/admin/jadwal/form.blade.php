@@ -26,6 +26,12 @@
             </div>
         @endif
 
+        @if (session('gagal'))
+            <p role="alert" class="mt-6 rounded-lg border border-nema-accent bg-nema-surface p-4 text-sm">
+                {{ session('gagal') }}
+            </p>
+        @endif
+
         <form method="post"
               action="{{ $jadwal->exists ? url('/admin/jadwal/' . $jadwal->id) : url('/admin/jadwal') }}"
               class="mt-8 space-y-6">
@@ -60,7 +66,7 @@
                 </select>
             </div>
 
-            <div class="grid gap-6 sm:grid-cols-2">
+            <div>
                 <div>
                     <label for="show_time" class="block text-sm">Waktu tayang</label>
                     <input type="datetime-local" id="show_time" name="show_time" required
@@ -68,18 +74,17 @@
                            class="mt-2 block min-h-11 w-full rounded-md border border-nema-line bg-nema-surface px-4">
                 </div>
 
-                <div>
-                    <label for="price" class="block text-sm">Harga per kursi</label>
-                    <input type="number" id="price" name="price" min="0" max="1000000" step="1000" required
-                           value="{{ old('price', $jadwal->price ?? 45000) }}"
-                           class="mt-2 block min-h-11 w-full rounded-md border border-nema-line bg-nema-surface px-4">
-                    <p class="mt-2 text-xs text-nema-muted">Dalam rupiah, tanpa titik.</p>
-                </div>
             </div>
 
             <p class="text-sm text-nema-muted">
-                Satu studio tidak boleh punya dua jadwal di waktu yang sama. Kalau bentrok,
-                simpanannya ditolak dan kamu diberi tahu jadwal mana yang bertabrakan.
+                Harga per kursi diambil otomatis dari tarif studio: hari biasa, atau akhir pekan
+                untuk Jumat sampai Minggu. Tarifnya diubah di halaman Studio.
+            </p>
+
+            <p class="text-sm text-nema-muted">
+                Satu studio tidak bisa memutar dua film yang waktunya bertabrakan, termasuk jeda
+                15 menit di antaranya. Kalau bentrok, simpanannya ditolak dan kamu diberi tahu
+                jadwal mana yang bertabrakan.
             </p>
 
             <div class="flex flex-wrap gap-3 border-t border-nema-line/40 pt-6">

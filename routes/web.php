@@ -176,6 +176,8 @@ Route::prefix('admin')->middleware(['auth', IsAdmin::class])->group(function () 
         $studio = \App\Models\Studio::create([
             'name' => $data['name'],
             'capacity' => $data['baris'] * $data['per_baris'],
+            'harga_biasa' => $data['harga_biasa'],
+            'harga_akhir_pekan' => $data['harga_akhir_pekan'],
         ]);
 
         susunKursi($studio, $data['baris'], $data['per_baris']);
@@ -190,7 +192,14 @@ Route::prefix('admin')->middleware(['auth', IsAdmin::class])->group(function () 
         $terkunci = studioTerkunci($studio);
         $data = aturanStudio($request, $terkunci);
 
-        $studio->update(['name' => $data['name']]);
+        $studio->update([
+            'name' => $data['name'],
+            'harga_biasa' => $data['harga_biasa'],
+            'harga_akhir_pekan' => $data['harga_akhir_pekan'],
+        ]);
+
+        // Jadwal yang belum lewat ikut memakai tarif baru.
+        $studio->sesuaikanHargaJadwal();
 
         if (! $terkunci) {
             $studio->update(['capacity' => $data['baris'] * $data['per_baris']]);
@@ -255,7 +264,7 @@ Route::prefix('admin')->middleware(['auth', IsAdmin::class])->group(function () 
     Route::post('/jadwal', function (\Illuminate\Http\Request $request) {
         $data = aturanJadwal($request);
 
-        if ($bentrok = jadwalBentrok($data['studio_id'], $data['show_time'])) {
+        if ($bentrok = jadwalBentrok($data['studio_id'], $data['movie_id'], $data['show_time'])) {
             return back()->withInput()->with('gagal', $bentrok);
         }
 
@@ -267,7 +276,7 @@ Route::prefix('admin')->middleware(['auth', IsAdmin::class])->group(function () 
     Route::put('/jadwal/{showtime}', function (\Illuminate\Http\Request $request, \App\Models\Showtime $showtime) {
         $data = aturanJadwal($request);
 
-        if ($bentrok = jadwalBentrok($data['studio_id'], $data['show_time'], $showtime->id)) {
+        if ($bentrok = jadwalBentrok($data['studio_id'], $data['movie_id'], $data['show_time'], $showtime->id)) {
             return back()->withInput()->with('gagal', $bentrok);
         }
 
@@ -333,7 +342,11 @@ function aturanFilm(\Illuminate\Http\Request $request): array
 // dimatikan di halaman sehingga tidak terkirim.
 function aturanStudio(\Illuminate\Http\Request $request, bool $terkunci = false): array
 {
-    $aturan = ['name' => ['required', 'string', 'max:255']];
+    $aturan = [
+        'name' => ['required', 'string', 'max:255'],
+        'harga_biasa' => ['required', 'integer', 'min:0', 'max:1000000'],
+        'harga_akhir_pekan' => ['required', 'integer', 'min:0', 'max:1000000'],
+    ];
 
     if (! $terkunci) {
         $aturan['baris'] = ['required', 'integer', 'min:1', 'max:26'];
@@ -342,6 +355,8 @@ function aturanStudio(\Illuminate\Http\Request $request, bool $terkunci = false)
 
     return $request->validate($aturan, [], [
         'name' => 'nama studio',
+        'harga_biasa' => 'harga hari biasa',
+        'harga_akhir_pekan' => 'harga akhir pekan',
         'baris' => 'jumlah baris',
         'per_baris' => 'kursi per baris',
     ]);
@@ -349,17 +364,22 @@ function aturanStudio(\Illuminate\Http\Request $request, bool $terkunci = false)
 
 function aturanJadwal(\Illuminate\Http\Request $request): array
 {
-    return $request->validate([
+    $data = $request->validate([
         'movie_id' => ['required', 'integer', 'exists:movies,id'],
         'studio_id' => ['required', 'integer', 'exists:studios,id'],
         'show_time' => ['required', 'date'],
-        'price' => ['required', 'integer', 'min:0', 'max:1000000'],
     ], [], [
         'movie_id' => 'film',
         'studio_id' => 'studio',
         'show_time' => 'waktu tayang',
-        'price' => 'harga',
     ]);
+
+    // Harga tidak diisi admin per jadwal. Diambil dari tarif studio sesuai harinya,
+    // jadi semua jam di hari dan studio yang sama pasti berharga sama.
+    $data['price'] = \App\Models\Studio::find($data['studio_id'])
+        ->hargaUntuk(\Illuminate\Support\Carbon::parse($data['show_time']));
+
+    return $data;
 }
 
 // Menyusun ulang kursi sebuah studio, dipanggil saat studio dibuat atau diubah.
@@ -392,19 +412,15 @@ function studioTerkunci(\App\Models\Studio $studio): bool
         && \App\Models\Booking::whereIn('seat_id', $studio->seats()->select('id'))->exists();
 }
 
-// Satu studio tidak boleh punya dua jadwal yang mulai pada jam yang sama.
-function jadwalBentrok(int $studioId, string $waktu, ?int $kecuali = null): ?string
+// Satu studio tidak boleh memutar dua film yang waktunya bertabrakan, termasuk jeda bersih-bersih.
+function jadwalBentrok(int $studioId, int $movieId, string $waktu, ?int $kecuali = null): ?string
 {
-    $bentrok = \App\Models\Showtime::where('studio_id', $studioId)
-        ->where('show_time', \Illuminate\Support\Carbon::parse($waktu))
-        ->when($kecuali, fn ($q) => $q->whereKeyNot($kecuali))
-        ->with('movie')
-        ->first();
+    $bentrok = \App\Models\Showtime::bentrokDengan($studioId, $movieId, \Illuminate\Support\Carbon::parse($waktu), $kecuali);
 
     if (! $bentrok) {
         return null;
     }
 
-    return 'Studio itu sudah dipakai "' . ($bentrok->movie?->title ?? 'film lain')
-        . '" pada jam yang sama. Pilih jam atau studio lain.';
+    return 'Studio itu masih dipakai "' . ($bentrok->movie?->title ?? 'film lain') . '" yang mulai jam '
+        . $bentrok->show_time->format('H:i') . '. Pilih jam atau studio lain.';
 }
