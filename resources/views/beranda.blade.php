@@ -8,6 +8,8 @@
         // Film yang belum tayang dipisahkan supaya tidak ikut muncul di bagian lain.
         // Penandanya kolom 'mulai', nanti datang dari movies.is_showing.
         $akanTayang = array_values(array_filter($semuaFilm, fn($f) => $f['mulai'] !== null));
+        // Film yang paling cepat rilis ditaruh paling atas.
+        usort($akanTayang, fn($a, $b) => strcmp($a['mulai'], $b['mulai']));
         $film = array_values(array_filter($semuaFilm, fn($f) => $f['mulai'] === null));
 
         $unggulan = array_slice($film, 0, 3);

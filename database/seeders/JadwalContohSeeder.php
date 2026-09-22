@@ -70,6 +70,11 @@ class JadwalContohSeeder extends Seeder
             // tiga tayangan satu format tersebar dari siang sampai malam, tidak menumpuk di jam yang sama.
             for ($putaran = 0; $putaran < self::TAYANG_PER_FORMAT; $putaran++) {
                 foreach ($film as $urut => $f) {
+                    // Film yang belum rilis baru diberi jadwal mulai hari rilisnya.
+                    if ($f->release_date && $f->release_date > $tanggal->format('Y-m-d')) {
+                        continue;
+                    }
+
                     foreach (self::POLA_FORMAT[$urut % count(self::POLA_FORMAT)] as $format) {
                         $dipakai = $studio->get($format, collect())
                             ->sortBy(fn ($s) => [$kosong[$s->id]->timestamp, $s->id])
