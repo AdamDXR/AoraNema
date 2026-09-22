@@ -110,6 +110,38 @@
         </p>
     </footer>
 
+    <script>
+        // Posisi gulir diingat per halaman, lalu dikembalikan saat halaman dimuat lagi: waktu
+        // di-refresh, waktu menekan Kembali di browser, dan waktu tombol seperti pilihan tanggal,
+        // saringan, urutan, atau tab memuat ulang halaman yang sama dengan isian berbeda.
+        // Tanpa ini penonton selalu dilempar ke atas. Datang dari halaman lain tetap mulai dari atas.
+        (function () {
+            const kunci = 'gulir:' + location.pathname;
+
+            if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
+            window.addEventListener('pagehide', function () {
+                try { sessionStorage.setItem(kunci, String(window.scrollY)); } catch (e) {}
+            });
+
+            // Tautan ke bagian tertentu, seperti #semua-film, lebih diutamakan daripada posisi lama.
+            if (location.hash) return;
+
+            const jenis = (performance.getEntriesByType('navigation')[0] || {}).type;
+            let dariHalamanIni = false;
+            try { dariHalamanIni = new URL(document.referrer).pathname === location.pathname; } catch (e) {}
+
+            if (jenis !== 'reload' && jenis !== 'back_forward' && ! dariHalamanIni) return;
+
+            let posisi = null;
+            try { posisi = sessionStorage.getItem(kunci); } catch (e) {}
+            if (posisi === null) return;
+
+            // behavior 'instant' supaya tidak dianimasikan dari atas oleh scroll-smooth di <html>.
+            window.scrollTo({ top: Number(posisi), behavior: 'instant' });
+        })();
+    </script>
+
 </body>
 
 </html>
