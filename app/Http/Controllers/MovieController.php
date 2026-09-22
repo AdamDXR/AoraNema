@@ -33,7 +33,7 @@ class MovieController extends Controller
                 $query->where('title', 'like', '%' . $cari . '%');
             })
             ->get()
-            ->map(fn ($movie) => $movie->kartu());
+            ->map(fn (\App\Models\Movie $movie) => $movie->kartu());
 
         // "Terbaru" menaruh film yang sedang tayang di atas, rilis paling baru dulu, lalu film yang
         // akan tayang, tanggal paling dekat dulu. Tanpa pemisahan ini, film yang belum tayang

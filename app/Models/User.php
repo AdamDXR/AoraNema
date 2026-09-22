@@ -62,4 +62,9 @@ class User extends Authenticatable
     {
         return $this->role === 'user';
     }
+
+    public function bookings(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Booking::class);
+    }
 }

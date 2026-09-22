@@ -212,9 +212,14 @@ class BookingController extends Controller
             ->map(function ($kursi, $kode) use ($hariIni, $namaHari, $namaBulan) {
                 $b = $kursi->first();
                 $waktu = $b->showtime->show_time;
+                $durasi = $b->showtime->movie->duration_minutes ?? 120;
+                $waktuSelesai = $waktu->copy()->addMinutes($durasi);
+
                 $selisih = (int) $hariIni->diffInDays($waktu->copy()->startOfDay(), false);
                 $dibatalkan = $b->status === 'cancelled';
-                $lewat = $waktu->isPast();
+                
+                // Tiket baru kedaluwarsa setelah film selesai (waktu tayang + durasi)
+                $lewat = $waktuSelesai->isPast();
 
                 return [
                     'kode' => $kode,
@@ -261,10 +266,11 @@ class BookingController extends Controller
         ]);
 
         // Film cuma boleh dinilai kalau benar-benar sudah ditonton: tiketnya sudah dibayar
-        // dan jam tayangnya sudah lewat. Tanpa ini siapa pun bisa menilai film apa saja.
+        // dan jam tayang BERSERTA durasi filmnya sudah lewat.
+        $durasi = Movie::find($data['movie_id'])->duration_minutes ?? 120;
         $sudahDitonton = Booking::where('user_id', $request->user()->id)
             ->where('status', 'paid')
-            ->whereHas('showtime', fn ($q) => $q->where('movie_id', $data['movie_id'])->where('show_time', '<', now()))
+            ->whereHas('showtime', fn ($q) => $q->where('movie_id', $data['movie_id'])->where('show_time', '<', now()->subMinutes($durasi)))
             ->exists();
 
         abort_unless($sudahDitonton, 403);

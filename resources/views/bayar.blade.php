@@ -2,6 +2,11 @@
     /**
      * @var \App\Models\Movie $film
      * @var \Carbon\Carbon $tanggal
+     * @var \App\Models\Showtime $jadwal
+     * @var string $layar
+     * @var string $jam
+     * @var int $harga
+     * @var array $kursi
      */
 @endphp
 
