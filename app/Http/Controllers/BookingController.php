@@ -283,9 +283,12 @@ class BookingController extends Controller
             return back()->with('error', 'Halaman pembayaran gagal dibuka. Coba lagi sebentar lagi.');
         }
 
-        // Pesanan tetap menunggu pembayaran. Statusnya baru berubah setelah Midtrans menyatakan
-        // uangnya diterima, lewat pemberitahuan (webhook) atau saat penonton kembali ke halaman tiket.
-        Payment::where('order_id', $orderId)->update(['snap_url' => $snapUrl]);
+        // Proyek ini untuk belajar dan tidak ada yang membayar sungguhan, jadi pesanan langsung
+        // dianggap lunas begitu halaman Midtrans dibuka. Halaman Midtrans tetap ditampilkan untuk
+        // memperlihatkan alurnya. Untuk pembayaran sungguhan, hapus dua baris update status ini:
+        // pesanan akan menunggu sampai Midtrans menyatakan lunas lewat cekStatus() dan notifikasiMidtrans().
+        Payment::where('order_id', $orderId)->update(['snap_url' => $snapUrl, 'transaction_status' => 'settlement']);
+        Booking::where('booking_code', $bookingCode)->update(['status' => 'paid']);
 
         return redirect()->away($snapUrl);
     }
