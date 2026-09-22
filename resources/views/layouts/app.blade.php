@@ -111,30 +111,52 @@
     </footer>
 
     <script>
-        // Posisi gulir diingat per halaman, lalu dikembalikan saat halaman dimuat lagi: waktu
-        // di-refresh, waktu menekan Kembali di browser, dan waktu tombol seperti pilihan tanggal,
-        // saringan, urutan, atau tab memuat ulang halaman yang sama dengan isian berbeda.
-        // Tanpa ini penonton selalu dilempar ke atas. Datang dari halaman lain tetap mulai dari atas.
+        // Posisi gulir diingat per halaman, lalu dikembalikan saat penonton kembali ke halaman itu:
+        // waktu di-refresh, waktu menekan Kembali di browser, waktu tombol seperti pilihan tanggal,
+        // saringan, urutan, atau tab memuat ulang halaman yang sama, dan waktu penonton kembali dari
+        // halaman yang tadi dibuka dari sini, misalnya beranda, lalu detail film, lalu beranda lagi.
+        // Halaman yang dibuka pertama kali tetap mulai dari atas.
         (function () {
             const kunci = 'gulir:' + location.pathname;
+            const simpan = (k, v) => { try { sessionStorage.setItem(k, v); } catch (e) {} };
+            const baca = (k) => { try { return sessionStorage.getItem(k); } catch (e) { return null; } };
+
+            // Setiap tautan ke halaman lain di AoraNema mencatat dari halaman mana tujuannya dibuka,
+            // lengkap dengan ?isian-nya, misalnya /film?urut=az. Tautan ke halaman yang sama, seperti
+            // pilihan tanggal, tidak dicatat supaya asal yang lama tidak tertimpa.
+            document.addEventListener('click', function (e) {
+                const a = e.target.closest('a[href]');
+                if (! a || a.origin !== location.origin || a.pathname === location.pathname) return;
+                simpan('asal:' + a.pathname, location.pathname + location.search);
+            }, true);
+
+            // Tautan Kembali menuju halaman asal yang tercatat, bukan selalu ke beranda.
+            const asal = baca('asal:' + location.pathname);
+            if (asal) {
+                document.querySelectorAll('[data-kembali]').forEach(function (a) { a.href = asal; });
+            }
 
             if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
             window.addEventListener('pagehide', function () {
-                try { sessionStorage.setItem(kunci, String(window.scrollY)); } catch (e) {}
+                simpan(kunci, String(window.scrollY));
             });
 
             // Tautan ke bagian tertentu, seperti #semua-film, lebih diutamakan daripada posisi lama.
             if (location.hash) return;
 
             const jenis = (performance.getEntriesByType('navigation')[0] || {}).type;
-            let dariHalamanIni = false;
-            try { dariHalamanIni = new URL(document.referrer).pathname === location.pathname; } catch (e) {}
+            let dari = null;
+            try { dari = new URL(document.referrer); } catch (e) {}
 
-            if (jenis !== 'reload' && jenis !== 'back_forward' && ! dariHalamanIni) return;
+            const halamanSama = dari && dari.origin === location.origin && dari.pathname === location.pathname;
+            // Halaman sebelumnya dibuka dari halaman ini, jadi penonton sedang kembali ke sini.
+            const asalSebelumnya = dari && dari.origin === location.origin ? baca('asal:' + dari.pathname) : null;
+            const kembaliKeSini = asalSebelumnya !== null && asalSebelumnya.split('?')[0] === location.pathname;
 
-            let posisi = null;
-            try { posisi = sessionStorage.getItem(kunci); } catch (e) {}
+            if (jenis !== 'reload' && jenis !== 'back_forward' && ! halamanSama && ! kembaliKeSini) return;
+
+            const posisi = baca(kunci);
             if (posisi === null) return;
 
             // behavior 'instant' supaya tidak dianimasikan dari atas oleh scroll-smooth di <html>.

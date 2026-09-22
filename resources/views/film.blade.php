@@ -40,9 +40,11 @@
 
     <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
 
-        <a href="{{ url('/') }}"
+        {{-- data-kembali: kalau penonton datang dari halaman lain di AoraNema, tautan ini kembali
+             ke halaman itu di posisi guliran yang sama. Kalau datang dari luar, ke beranda. --}}
+        <a href="{{ url('/') }}" data-kembali
             class="inline-flex min-h-11 items-center text-sm text-nema-muted transition-colors hover:text-nema-text">
-            &larr;&nbsp; Kembali ke beranda
+            &larr;&nbsp; Kembali
         </a>
 
         <div class="mt-4 grid gap-10 lg:grid-cols-[320px_1fr] lg:gap-16">
