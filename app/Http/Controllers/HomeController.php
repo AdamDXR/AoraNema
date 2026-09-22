@@ -20,8 +20,8 @@ class HomeController extends Controller
             return $movie->kartu() + [
                 'sinopsis' => $movie->synopsis ?? 'Sinopsis belum tersedia.',
 
-                // Semuanya dianggap sedang tayang (mulai = null)
-                'mulai' => null,
+                // Film yang tanggal rilisnya belum tiba masuk bagian Akan Tayang.
+                'mulai' => $movie->akanTayang() ? $movie->release_date : null,
                 'id' => $movie->id,
             ];
         })->toArray();

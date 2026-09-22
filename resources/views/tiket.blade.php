@@ -27,11 +27,18 @@
             </p>
         @endif
 
-        <h1 class="text-center text-2xl sm:text-3xl">Tiketmu siap</h1>
+        @php
+            [$judulTiket, $ketTiket] = match ($keadaan) {
+                'batal' => ['Pesanan dibatalkan', 'Tiket ini sudah tidak berlaku.'],
+                'belum-bayar' => ['Menunggu pembayaran', 'Kode masuk muncul di sini setelah pembayaran diterima.'],
+                'selesai' => ['Film sudah selesai', 'Tiket ini sudah lewat dan tidak bisa dipakai masuk lagi.'],
+                default => ['Tiketmu siap', 'Tunjukkan kode ini ke petugas di pintu masuk.'],
+            };
+        @endphp
 
-        <p class="mt-2 text-center text-sm text-nema-muted">
-            Tunjukkan kode ini ke petugas di pintu masuk.
-        </p>
+        <h1 class="text-center text-2xl sm:text-3xl">{{ $judulTiket }}</h1>
+
+        <p class="mt-2 text-center text-sm text-nema-muted">{{ $ketTiket }}</p>
 
         <div data-tiket class="mt-8 overflow-hidden rounded-2xl bg-nema-surface">
 
@@ -39,10 +46,13 @@
                 <p class="text-center text-xs text-nema-muted">Kode pesanan</p>
 
                 {{-- Alasnya putih dan batangnya hitam karena pemindai butuh kontras setinggi
-                     mungkin. Kode batang di atas latar gelap sering gagal terbaca. --}}
-                <div class="mt-4 rounded-lg bg-white p-3 flex justify-center">
-                    {!! $batang !!}
-                </div>
+                     mungkin. Kode batang di atas latar gelap sering gagal terbaca. Tiket yang
+                     tidak bisa dipakai masuk tidak diberi kode batang, supaya tidak bisa dipindai. --}}
+                @if ($keadaan === 'aktif')
+                    <div class="mt-4 rounded-lg bg-white p-3 flex justify-center">
+                        {!! $batang !!}
+                    </div>
+                @endif
 
                 <p class="mt-4 text-center font-mono text-2xl font-semibold tracking-widest sm:text-3xl">{{ $kode }}</p>
             </div>

@@ -135,7 +135,7 @@
                         <div class="mt-4 rounded-xl border border-nema-line bg-nema-surface p-6">
                             @php $berikutnya = collect($tanggalBerjadwal)->first(fn ($t) => $t > $tanggal->format('Y-m-d')) ?? ($tanggalBerjadwal[0] ?? null); @endphp
 
-                            <p>{{ $tanggal->isToday() ? 'Jam tayang hari ini sudah habis.' : 'Belum ada jadwal tayang di tanggal ini.' }}</p>
+                            <p>Belum ada jadwal tayang di tanggal ini.</p>
 
                             @if ($berikutnya)
                                 @php $b = \Illuminate\Support\Carbon::parse($berikutnya); @endphp
@@ -157,8 +157,15 @@
                                     {{-- Harga ditentukan studio dan harinya, jadi semua jam di baris ini sama harganya. --}}
                                     {{-- Diambil dari jam yang masih bisa dipesan. Jam yang sudah lewat bisa menyimpan
                                          harga lama kalau tarif studionya diubah setelah itu. --}}
+                                    @php
+                                        $harga = $daftarJam->filter(fn ($j) => $j->show_time->isFuture())->pluck('price');
+                                        $harga = $harga->isEmpty() ? $daftarJam->pluck('price') : $harga;
+                                        $rp = fn ($n) => 'Rp ' . number_format($n, 0, ',', '.');
+                                    @endphp
+                                    {{-- Beberapa studio bisa berformat sama tapi bertarif berbeda, jadi yang
+                                         ditulis rentangnya. Jam yang sudah lewat tidak dihitung. --}}
                                     <p class="text-sm text-nema-muted">
-                                        Rp {{ number_format(($daftarJam->first(fn ($j) => $j->show_time->isFuture()) ?? $daftarJam->first())->price, 0, ',', '.') }}
+                                        {{ $harga->min() === $harga->max() ? $rp($harga->min()) : $rp($harga->min()) . ' – ' . $rp($harga->max()) }}
                                     </p>
                                 </div>
 

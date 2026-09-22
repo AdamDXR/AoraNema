@@ -99,7 +99,8 @@
                                     </a>
 
                                     <form method="post" action="{{ url('/admin/film/' . $f->id) }}"
-                                          onsubmit="return confirm('Hapus film &quot;{{ $f->title }}&quot;? Tindakan ini tidak bisa dibatalkan. Untuk menarik film dari peredaran, pakai Arsipkan.')">
+                                          data-konfirmasi="Hapus film &quot;{{ $f->title }}&quot;? Tindakan ini tidak bisa dibatalkan. Untuk menarik film dari peredaran, pakai Arsipkan."
+                                          onsubmit="return confirm(this.dataset.konfirmasi)">
                                         @csrf
                                         @method('delete')
 

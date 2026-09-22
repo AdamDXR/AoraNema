@@ -40,7 +40,10 @@
         // paling kecil 24 piksel supaya sepuluh kursi per baris muat di HP tanpa digeser, dan paling
         // besar 44 piksel di layar lebar. Studio yang barisnya sangat panjang tetap bisa digeser.
         $kolomKursi = 'minmax(1.5rem, 2.75rem)';
-        $kolomDenah = '1.25rem repeat(' . $lorongSetelah . ', ' . $kolomKursi . ') 1rem repeat(' . ($kursiTerbanyak - $lorongSetelah) . ', ' . $kolomKursi . ')';
+        // Studio dengan satu kursi per baris tidak diberi lorong, karena repeat(0, ...) tidak sah di CSS.
+        $kolomDenah = $lorongSetelah > 0
+            ? '1.25rem repeat(' . $lorongSetelah . ', ' . $kolomKursi . ') 1rem repeat(' . ($kursiTerbanyak - $lorongSetelah) . ', ' . $kolomKursi . ')'
+            : '1.25rem repeat(' . max(1, $kursiTerbanyak) . ', ' . $kolomKursi . ')';
 
         $filmSlug = Str::slug($film->title) . '-' . $film->id;
 

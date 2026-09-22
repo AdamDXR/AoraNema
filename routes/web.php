@@ -250,7 +250,7 @@ Route::prefix('admin')->middleware(['auth', IsAdmin::class])->group(function () 
     Route::get('/jadwal/baru', function () {
         return view('admin.jadwal.form', [
             'jadwal' => new \App\Models\Showtime(),
-            'film' => \App\Models\Movie::orderBy('title')->get(),
+            'film' => \App\Models\Movie::where('is_showing', true)->orderBy('title')->get(),
             'studio' => \App\Models\Studio::orderBy('name')->get(),
         ]);
     });
@@ -258,7 +258,7 @@ Route::prefix('admin')->middleware(['auth', IsAdmin::class])->group(function () 
     Route::get('/jadwal/{showtime}/ubah', function (\App\Models\Showtime $showtime) {
         return view('admin.jadwal.form', [
             'jadwal' => $showtime,
-            'film' => \App\Models\Movie::orderBy('title')->get(),
+            'film' => \App\Models\Movie::where('is_showing', true)->orWhere('id', $showtime->movie_id)->orderBy('title')->get(),
             'studio' => \App\Models\Studio::orderBy('name')->get(),
         ]);
     });
@@ -267,7 +267,7 @@ Route::prefix('admin')->middleware(['auth', IsAdmin::class])->group(function () 
     // bertabrakan atau sudah lewat dilewati, sisanya tetap disimpan, lalu admin diberi tahu.
     Route::post('/jadwal', function (\Illuminate\Http\Request $request) {
         $data = $request->validate([
-            'movie_id' => ['required', 'integer', 'exists:movies,id'],
+            'movie_id' => ['required', 'integer', \Illuminate\Validation\Rule::exists('movies', 'id')->where('is_showing', true)],
             'studio_id' => ['required', 'integer', 'exists:studios,id'],
             'tanggal_mulai' => ['required', 'date', 'after_or_equal:today'],
             'tanggal_selesai' => ['nullable', 'date', 'after_or_equal:tanggal_mulai', 'before_or_equal:' . now()->addDays(30)->format('Y-m-d')],
@@ -330,6 +330,13 @@ Route::prefix('admin')->middleware(['auth', IsAdmin::class])->group(function () 
     });
 
     Route::put('/jadwal/{showtime}', function (\Illuminate\Http\Request $request, \App\Models\Showtime $showtime) {
+        // Jadwal yang sudah dipesan tidak boleh dipindah film, studio, atau jamnya. Kursi pesanan
+        // menunjuk ke kursi studio ini, dan penonton sudah memegang tiket untuk jam ini.
+        if ($showtime->bookings()->exists()) {
+            return back()->with('gagal', 'Jadwal ini sudah punya pesanan, jadi tidak bisa diubah. '
+                . 'Buat jadwal baru kalau perlu jam atau studio lain.');
+        }
+
         $data = aturanJadwal($request);
 
         if ($bentrok = jadwalBentrok($data['studio_id'], $data['movie_id'], $data['show_time'], $showtime->id)) {
@@ -342,6 +349,13 @@ Route::prefix('admin')->middleware(['auth', IsAdmin::class])->group(function () 
     });
 
     Route::delete('/jadwal/{showtime}', function (\App\Models\Showtime $showtime) {
+        // Menghapus jadwal ikut menghapus pesanan dan pembayarannya (cascadeOnDelete),
+        // jadi jadwal yang sudah dipesan dibiarkan. Tiket penonton harus tetap ada.
+        if ($showtime->bookings()->exists()) {
+            return redirect('/admin/jadwal')->with('gagal', 'Jadwal ini sudah punya pesanan, jadi tidak dihapus. '
+                . 'Tiket penonton akan ikut hilang kalau jadwalnya dihapus.');
+        }
+
         $showtime->delete();
 
         return redirect('/admin/jadwal')->with('sukses', 'Jadwal dihapus.');
@@ -422,9 +436,9 @@ function aturanStudio(\Illuminate\Http\Request $request, bool $terkunci = false)
 function aturanJadwal(\Illuminate\Http\Request $request): array
 {
     $data = $request->validate([
-        'movie_id' => ['required', 'integer', 'exists:movies,id'],
+        'movie_id' => ['required', 'integer', \Illuminate\Validation\Rule::exists('movies', 'id')->where('is_showing', true)],
         'studio_id' => ['required', 'integer', 'exists:studios,id'],
-        'show_time' => ['required', 'date'],
+        'show_time' => ['required', 'date', 'after:now'],
     ], [], [
         'movie_id' => 'film',
         'studio_id' => 'studio',

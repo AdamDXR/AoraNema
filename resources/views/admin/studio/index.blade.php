@@ -76,7 +76,8 @@
                                     </a>
 
                                     <form method="post" action="{{ url('/admin/studio/' . $s->id) }}"
-                                          onsubmit="return confirm('Hapus studio &quot;{{ $s->name }}&quot;? Kursi di dalamnya ikut terhapus.')">
+                                          data-konfirmasi="Hapus studio &quot;{{ $s->name }}&quot;? Kursi di dalamnya ikut terhapus."
+                                          onsubmit="return confirm(this.dataset.konfirmasi)">
                                         @csrf
                                         @method('delete')
 
