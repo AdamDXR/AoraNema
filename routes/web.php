@@ -74,6 +74,10 @@ Route::get('/film', function () {
 
     $cari = trim((string) request('cari'));
     $status = in_array(request('status'), ['tayang', 'segera']) ? request('status') : 'semua';
+    $urut = in_array(request('urut'), ['az', 'za']) ? request('urut') : 'terbaru';
+    $tampilan = request('tampilan') === 'baris' ? 'baris' : 'kotak';
+
+    $namaBulan = [1 => 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
     $film = collect($semua)
         ->when($status === 'tayang', fn ($c) => $c->filter(fn ($f) => $f['mulai'] === null))
@@ -81,10 +85,29 @@ Route::get('/film', function () {
         ->when($cari !== '', fn ($c) => $c->filter(
             fn ($f) => str_contains(mb_strtolower($f['judul']), mb_strtolower($cari))
         ))
+        // "Terbaru" menaruh film yang sedang tayang di atas, rilis paling baru dulu, lalu film yang
+        // akan tayang, tanggal paling dekat dulu. Tanpa pemisahan ini, film yang belum tayang
+        // selalu naik ke puncak karena tanggal rilisnya di masa depan.
+        ->when($urut === 'terbaru', function ($c) {
+            [$segera, $tayang] = $c->partition(fn ($f) => $f['mulai'] !== null);
+
+            return $tayang->sortByDesc('rilis')->concat($segera->sortBy('mulai'));
+        })
+        ->when($urut === 'az', fn ($c) => $c->sortBy('judul', SORT_NATURAL | SORT_FLAG_CASE))
+        ->when($urut === 'za', fn ($c) => $c->sortByDesc('judul', SORT_NATURAL | SORT_FLAG_CASE))
+        ->map(function ($f) use ($namaBulan) {
+            [, $bln, $hr] = $f['mulai'] ? explode('-', $f['mulai']) : [null, null, null];
+
+            return $f + [
+                'durasiTeks' => intdiv($f['durasi'], 60) . 'j ' . ($f['durasi'] % 60) . 'm',
+                'format' => formatLayar($f['genre']),
+                'mulaiTeks' => $f['mulai'] ? (int) $hr . ' ' . $namaBulan[(int) $bln] : null,
+            ];
+        })
         ->values()
         ->all();
 
-    return view('daftar-film', compact('film', 'cari', 'status'));
+    return view('daftar-film', compact('film', 'cari', 'status', 'urut', 'tampilan'));
 });
 
 Route::get('/film/{slug}', function (string $slug) use ($ambilFilm, $ambilTanggal) {
@@ -560,4 +583,14 @@ function jadwalBentrok(int $studioId, string $waktu, ?int $kecuali = null): ?str
 function kodePesanan(string $slug, string $tanggal, string $jam, string $layar, array $kursi): string
 {
     return 'AORA-' . strtoupper(substr(md5($slug . $tanggal . $jam . $layar . implode(',', $kursi)), 0, 6));
+}
+
+// Format layar yang tersedia untuk sebuah film. Aturannya sama dengan di film.blade.php:
+// IMAX dan 3D hanya untuk genre yang layar besarnya terasa. Begitu jadwal dibaca dari tabel
+// showtimes, format ini diambil dari studio jadwalnya, bukan ditebak dari genre.
+function formatLayar(string $genre): array
+{
+    return in_array($genre, ['Laga', 'Fiksi Ilmiah', 'Petualangan', 'Horor'])
+        ? ['2D', '3D', 'IMAX']
+        : ['2D'];
 }
