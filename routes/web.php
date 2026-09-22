@@ -1,6 +1,11 @@
 <?php
 
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\MovieController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BookingController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Middleware\IsAdmin;
 
 // Beberapa pemeriksaan dipakai lebih dari satu halaman, jadi ditaruh sekali di sini.
 
@@ -65,81 +70,29 @@ $pesanan = function (string $slug, string $tampilan) use ($ambilFilm, $ambilTang
     return view($tampilan, compact('film', 'tanggal', 'layar', 'jam', 'kursi', 'akhirPekan', 'namaMetode'));
 };
 
-Route::get('/', function () {
-    return view('beranda');
+Route::get('/', [HomeController::class, 'index']);
+
+Route::get('/film', [MovieController::class, 'index']);
+
+Route::get('/film/{slug}', [MovieController::class, 'show'])->where('slug', '[a-z0-9-]+');
+
+Route::middleware(['auth', \App\Http\Middleware\IsUser::class])->group(function () {
+    Route::get('/kursi/{slug}', [BookingController::class, 'pilihKursi'])->where('slug', '[a-z0-9-]+');
+    Route::get('/bayar/{slug}', [BookingController::class, 'halamanBayar'])->where('slug', '[a-z0-9-]+');
+    Route::post('/proses-bayar/{slug}', [BookingController::class, 'prosesBayar']);
 });
 
-Route::get('/film', function () {
-    $semua = require resource_path('data/film.php');
-
-    $cari = trim((string) request('cari'));
-    $status = in_array(request('status'), ['tayang', 'segera']) ? request('status') : 'semua';
-    $urut = in_array(request('urut'), ['az', 'za']) ? request('urut') : 'terbaru';
-    $tampilan = request('tampilan') === 'baris' ? 'baris' : 'kotak';
-
-    $namaBulan = [1 => 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-
-    $film = collect($semua)
-        ->when($status === 'tayang', fn ($c) => $c->filter(fn ($f) => $f['mulai'] === null))
-        ->when($status === 'segera', fn ($c) => $c->filter(fn ($f) => $f['mulai'] !== null))
-        ->when($cari !== '', fn ($c) => $c->filter(
-            fn ($f) => str_contains(mb_strtolower($f['judul']), mb_strtolower($cari))
-        ))
-        // "Terbaru" menaruh film yang sedang tayang di atas, rilis paling baru dulu, lalu film yang
-        // akan tayang, tanggal paling dekat dulu. Tanpa pemisahan ini, film yang belum tayang
-        // selalu naik ke puncak karena tanggal rilisnya di masa depan.
-        ->when($urut === 'terbaru', function ($c) {
-            [$segera, $tayang] = $c->partition(fn ($f) => $f['mulai'] !== null);
-
-            return $tayang->sortByDesc('rilis')->concat($segera->sortBy('mulai'));
-        })
-        ->when($urut === 'az', fn ($c) => $c->sortBy('judul', SORT_NATURAL | SORT_FLAG_CASE))
-        ->when($urut === 'za', fn ($c) => $c->sortByDesc('judul', SORT_NATURAL | SORT_FLAG_CASE))
-        ->map(function ($f) use ($namaBulan) {
-            [, $bln, $hr] = $f['mulai'] ? explode('-', $f['mulai']) : [null, null, null];
-
-            return $f + [
-                'durasiTeks' => intdiv($f['durasi'], 60) . 'j ' . ($f['durasi'] % 60) . 'm',
-                'format' => formatLayar($f['genre']),
-                'mulaiTeks' => $f['mulai'] ? (int) $hr . ' ' . $namaBulan[(int) $bln] : null,
-            ];
-        })
-        ->values()
-        ->all();
-
-    return view('daftar-film', compact('film', 'cari', 'status', 'urut', 'tampilan'));
+Route::middleware('auth')->group(function () {
+    Route::get('/tiket/{booking_code}', [BookingController::class, 'halamanTiket']);
+    Route::post('/keluar', [AuthController::class, 'logout']);
 });
 
-Route::get('/film/{slug}', function (string $slug) use ($ambilFilm, $ambilTanggal) {
-    $film = $ambilFilm($slug);
-    $tanggal = $ambilTanggal();
-
-    return view('film', compact('film', 'tanggal'));
-})->where('slug', '[a-z0-9-]+');
-
-Route::get('/kursi/{slug}', function (string $slug) use ($ambilFilm, $ambilTanggal, $ambilLayarDanJam) {
-    $film = $ambilFilm($slug);
-
-    abort_if($film['mulai'] !== null, 404);
-
-    [$layar, $jam] = $ambilLayarDanJam();
-
-    $jumlah = max(1, min(6, (int) request('jumlah', 1)));
-
-    $tanggal = $ambilTanggal();
-    $akhirPekan = in_array($tanggal->dayOfWeek, [5, 6, 0]);
-
-    return view('kursi', compact('film', 'tanggal', 'layar', 'jam', 'jumlah', 'akhirPekan'));
-})->where('slug', '[a-z0-9-]+');
-
-Route::get('/bayar/{slug}', fn (string $slug) => $pesanan($slug, 'bayar'))
-    ->where('slug', '[a-z0-9-]+');
-
-Route::get('/tiket/{slug}', fn (string $slug) => $pesanan($slug, 'tiket'))
-    ->where('slug', '[a-z0-9-]+');
-
-Route::get('/masuk', function () {
-    return view('masuk');
+Route::middleware('guest')->group(function () {
+    Route::get('/masuk', [AuthController::class, 'showLoginForm'])->name('login');
+    Route::post('/masuk', [AuthController::class, 'login']);
+    
+    Route::get('/daftar', [AuthController::class, 'showRegisterForm']);
+    Route::post('/daftar', [AuthController::class, 'register']);
 });
 
 Route::get('/tiket-saya', function () {
@@ -212,7 +165,7 @@ Route::post('/tiket-saya/nilai', function (\Illuminate\Http\Request $request) {
 // controller yang sedang dikerjakan di branch adam/controller.
 // ---------------------------------------------------------------------------
 
-Route::prefix('admin')->group(function () {
+Route::prefix('admin')->middleware(['auth', IsAdmin::class])->group(function () {
 
     Route::get('/', function () {
         return redirect('/admin/film');
@@ -583,14 +536,4 @@ function jadwalBentrok(int $studioId, string $waktu, ?int $kecuali = null): ?str
 function kodePesanan(string $slug, string $tanggal, string $jam, string $layar, array $kursi): string
 {
     return 'AORA-' . strtoupper(substr(md5($slug . $tanggal . $jam . $layar . implode(',', $kursi)), 0, 6));
-}
-
-// Format layar yang tersedia untuk sebuah film. Aturannya sama dengan di film.blade.php:
-// IMAX dan 3D hanya untuk genre yang layar besarnya terasa. Begitu jadwal dibaca dari tabel
-// showtimes, format ini diambil dari studio jadwalnya, bukan ditebak dari genre.
-function formatLayar(string $genre): array
-{
-    return in_array($genre, ['Laga', 'Fiksi Ilmiah', 'Petualangan', 'Horor'])
-        ? ['2D', '3D', 'IMAX']
-        : ['2D'];
 }

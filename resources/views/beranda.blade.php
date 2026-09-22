@@ -5,10 +5,6 @@
 @section('konten')
 
     @php
-        // Data contoh dibaca dari resources/data/film.php supaya beranda dan halaman detail
-        // memakai sumber yang sama. Hapus baris require ini begitu controller mengirim datanya.
-        $semuaFilm = require resource_path('data/film.php');
-
         // Film yang belum tayang dipisahkan supaya tidak ikut muncul di bagian lain.
         // Penandanya kolom 'mulai', nanti datang dari movies.is_showing.
         $akanTayang = array_values(array_filter($semuaFilm, fn($f) => $f['mulai'] !== null));
@@ -48,9 +44,6 @@
         };
     @endphp
 
-    <p class="border-b border-nema-line/40 bg-nema-surface px-4 py-3 text-center text-sm text-nema-muted sm:px-6">
-        Film di halaman ini masih data contoh, belum tersambung ke database.
-    </p>
 
     <section>
 
@@ -70,7 +63,7 @@
                             <p class="mt-5 max-w-prose text-nema-muted">{{ $f['sinopsis'] }}</p>
 
                             <p class="mt-6 text-sm text-nema-muted">
-                                {{ $f['genre'] }} &middot; {{ $f['durasi'] }} menit &middot; {{ $f['usia'] }}
+                                {{ $f['genre'] }} &middot; {{ $f['durasi'] }} menit @if ($f['usia']) &middot; {{ $f['usia'] }} @endif
                             </p>
 
                             <div class="mt-8 flex flex-wrap gap-3">
@@ -87,8 +80,8 @@
 
                         <a href="{{ url('/film/' . $f['slug']) }}"
                            class="group block w-full max-w-xs lg:ml-auto lg:max-w-sm">
-                            @if (file_exists(public_path('img/' . $f['poster'])))
-                                <img src="{{ asset('img/' . $f['poster']) }}" alt="Poster film {{ $f['judul'] }}"
+                            @if ($f['poster'])
+                                <img src="{{ $f['poster'] }}" alt="Poster film {{ $f['judul'] }}"
                                     class="aspect-2/3 w-full rounded-xl object-cover transition-transform duration-300 group-hover:scale-[1.02]">
                             @else
                                 <div class="flex aspect-2/3 w-full items-end rounded-xl bg-nema-surface-2 p-5">
@@ -126,8 +119,8 @@
 
                             <a href="{{ url('/film/' . $sorotan['slug']) }}"
                                 class="group block w-full max-w-xs shrink-0 sm:w-56 sm:max-w-none lg:w-72">
-                                @if (file_exists(public_path('img/' . $sorotan['poster'])))
-                                    <img src="{{ asset('img/' . $sorotan['poster']) }}"
+                                @if ($sorotan['poster'])
+                                    <img src="{{ $sorotan['poster'] }}"
                                         alt="Poster film {{ $sorotan['judul'] }}"
                                         class="aspect-2/3 w-full rounded-xl object-cover transition-transform duration-300 group-hover:scale-[1.02]">
                                 @else
@@ -145,8 +138,7 @@
                                 <p class="mt-4 max-w-prose text-nema-muted">{{ $sorotan['sinopsis'] }}</p>
 
                                 <p class="mt-5 text-sm text-nema-muted">
-                                    {{ $sorotan['genre'] }} &middot; {{ $sorotan['durasi'] }} menit &middot;
-                                    {{ $sorotan['usia'] }} &middot; tayang sejak {{ $tanggalIndo($sorotan['rilis']) }}
+                                    {{ $sorotan['genre'] }} &middot; {{ $sorotan['durasi'] }} menit @if ($sorotan['usia']) &middot; {{ $sorotan['usia'] }} @endif &middot; tayang sejak {{ $tanggalIndo($sorotan['rilis']) }}
                                 </p>
 
                                 <a href="{{ url('/film/' . $sorotan['slug']) }}"
@@ -164,8 +156,8 @@
                             <li class="relative flex gap-4 border-t border-nema-line/40 py-5 lg:first:border-t-0 lg:first:pt-0">
 
                                 <div class="w-20 shrink-0 sm:w-24">
-                                    @if (file_exists(public_path('img/' . $f['poster'])))
-                                        <img src="{{ asset('img/' . $f['poster']) }}" alt="Poster film {{ $f['judul'] }}"
+                                    @if ($f['poster'])
+                                        <img src="{{ $f['poster'] }}" alt="Poster film {{ $f['judul'] }}"
                                             class="aspect-2/3 w-full rounded-lg object-cover">
                                     @else
                                         <div class="flex aspect-2/3 w-full items-end rounded-lg bg-nema-surface-2 p-2">
@@ -178,7 +170,7 @@
                                 <div class="min-w-0">
                                     <h3 class="text-lg leading-tight"><a href="{{ url('/film/' . $f['slug']) }}" class="after:absolute after:inset-0 focus-visible:outline-none">{{ $f['judul'] }}</a></h3>
                                     <p class="mt-1 text-xs text-nema-muted">{{ $f['genre'] }} &middot;
-                                        {{ $f['durasi'] }} menit &middot; {{ $f['usia'] }}</p>
+                                        {{ $f['durasi'] }} menit @if ($f['usia']) &middot; {{ $f['usia'] }} @endif</p>
                                     <p class="mt-2 text-sm text-nema-muted">{{ $f['tagline'] }}</p>
                                 </div>
 
@@ -210,12 +202,12 @@
                                 <p class="text-xs text-nema-muted">{{ $tanggalIndo($f['rilis']) }}</p>
                                 <h3 class="mt-1 text-lg leading-tight sm:text-xl"><a href="{{ url('/film/' . $f['slug']) }}" class="after:absolute after:inset-0 focus-visible:outline-none">{{ $f['judul'] }}</a></h3>
                                 <p class="mt-1 text-xs text-nema-muted sm:text-sm">{{ $f['genre'] }} &middot;
-                                    {{ $f['durasi'] }} menit &middot; {{ $f['usia'] }}</p>
+                                    {{ $f['durasi'] }} menit @if ($f['usia']) &middot; {{ $f['usia'] }} @endif</p>
                             </div>
 
                             <div class="w-20 shrink-0 sm:w-24">
-                                @if (file_exists(public_path('img/' . $f['poster'])))
-                                    <img src="{{ asset('img/' . $f['poster']) }}" alt="Poster film {{ $f['judul'] }}"
+                                @if ($f['poster'])
+                                    <img src="{{ $f['poster'] }}" alt="Poster film {{ $f['judul'] }}"
                                         class="aspect-2/3 w-full rounded-lg object-cover">
                                 @else
                                     <div class="flex aspect-2/3 w-full items-end rounded-lg bg-nema-surface-2 p-2">
@@ -240,33 +232,9 @@
                 </p>
             </div>
 
-            <div class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-5">
+            <div class="mt-6 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 sm:gap-x-5 lg:grid-cols-5">
                 @forelse ($film as $f)
-                    <article class="group relative">
-                    <a href="{{ url('/film/' . $f['slug']) }}" class="block">
-                        <div class="relative overflow-hidden rounded-lg bg-nema-surface-2">
-                            @if (file_exists(public_path('img/' . $f['poster'])))
-                                <img src="{{ asset('img/' . $f['poster']) }}" alt="Poster film {{ $f['judul'] }}"
-                                    class="aspect-2/3 w-full object-cover transition-transform duration-300 group-hover:scale-105">
-
-                                {{-- Kabut gelap dari dasar, supaya judul tetap terbaca di atas poster seterang apa pun. --}}
-                                <div
-                                    class="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-black/95 via-black/70 to-transparent">
-                                </div>
-
-                                <h3 class="absolute inset-x-0 bottom-0 p-3 text-base leading-tight text-white">
-                                    {{ $f['judul'] }}</h3>
-                            @else
-                                <div class="flex aspect-2/3 flex-col justify-end gap-2 p-3">
-                                    <span class="text-xs text-nema-muted">Poster belum tersedia</span>
-                                    <h3 class="text-base leading-tight">{{ $f['judul'] }}</h3>
-                                </div>
-                            @endif
-                        </div>
-                    </a>
-
-                        <p class="mt-2 text-xs text-nema-muted">{{ $f['genre'] }} &middot; {{ $f['usia'] }}</p>
-                    </article>
+                    @include('partials.kartu-film', ['f' => $f])
                 @empty
                     <p class="col-span-full rounded-lg border border-nema-line bg-nema-surface p-6 text-sm text-nema-muted">
                         Belum ada film yang bisa ditampilkan. Jadwal pekan ini belum dimasukkan pengelola.
@@ -289,8 +257,8 @@
                 <article class="group relative flex gap-4 rounded-xl bg-nema-surface p-4 sm:gap-5 sm:p-5">
 
                     <div class="w-24 shrink-0 sm:w-28 lg:w-32">
-                        @if (file_exists(public_path('img/' . $f['poster'])))
-                            <img src="{{ asset('img/' . $f['poster']) }}" alt="Poster film {{ $f['judul'] }}"
+                        @if ($f['poster'])
+                            <img src="{{ $f['poster'] }}" alt="Poster film {{ $f['judul'] }}"
                                 class="aspect-2/3 w-full rounded-lg object-cover">
                         @else
                             <div class="flex aspect-2/3 w-full items-end rounded-lg bg-nema-surface-2 p-2">
@@ -303,7 +271,7 @@
                         <h3 class="text-lg leading-tight sm:text-xl"><a href="{{ url('/film/' . $f['slug']) }}" class="after:absolute after:inset-0 focus-visible:outline-none">{{ $f['judul'] }}</a></h3>
 
                         <p class="mt-2 text-sm text-nema-muted">
-                            {{ $f['genre'] }} &middot; {{ $f['durasi'] }} menit &middot; {{ $f['usia'] }}
+                            {{ $f['genre'] }} &middot; {{ $f['durasi'] }} menit @if ($f['usia']) &middot; {{ $f['usia'] }} @endif
                         </p>
 
                         <p class="mt-3 text-sm">{{ $f['tagline'] }}</p>

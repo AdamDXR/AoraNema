@@ -1,6 +1,13 @@
+@php
+    /**
+     * @var \App\Models\Movie $film
+     * @var \Carbon\Carbon $tanggal
+     */
+@endphp
+
 @extends('layouts.app')
 
-@section('judul', 'Pembayaran, ' . $film['judul'])
+@section('judul', 'Pembayaran, ' . $film->title)
 
 @section('konten')
 
@@ -22,7 +29,10 @@
         $layanan = $jumlah * $biayaLayanan;
         $total = $subtotal + $layanan;
 
-        $adaPoster = file_exists(public_path('img/' . $film['poster']));
+        $adaPoster = !empty($film->poster_url);
+
+        // Tambahkan baris ini untuk membuat slug otomatis (misal: resident-evil-1)
+        $slugUrl = \Illuminate\Support\Str::slug($film->title) . '-' . $film->id;
 
         $metode = [
             'qris' => ['nama' => 'QRIS', 'ket' => 'Pindai dengan aplikasi bank atau dompet digital apa pun'],
@@ -31,21 +41,26 @@
         ];
     @endphp
 
-    <p class="border-b border-nema-line/40 bg-nema-surface px-4 py-3 text-center text-sm text-nema-muted sm:px-6">
-        Halaman contoh. Tidak ada uang yang ditagih dan pesanan belum tersimpan.
-    </p>
+
 
     <div class="mx-auto max-w-5xl px-4 py-8 sm:px-6">
 
-        <a href="{{ url('/kursi/' . $film['slug']) }}?layar={{ urlencode($layar) }}&jam={{ urlencode($jam) }}&tanggal={{ $tanggal->format('Y-m-d') }}&jumlah={{ $jumlah }}"
+        <a href="{{ url('/kursi/' . $slugUrl) }}?layar={{ urlencode($layar) }}&jam={{ urlencode($jam) }}&tanggal={{ $tanggal->format('Y-m-d') }}&jumlah={{ $jumlah }}"
            class="inline-flex min-h-11 items-center text-sm text-nema-muted transition-colors hover:text-nema-text">
             &larr;&nbsp; Ganti kursi
         </a>
 
         <h1 class="mt-4 text-2xl sm:text-3xl">Pembayaran</h1>
 
-        <form action="{{ url('/tiket/' . $film['slug']) }}" method="get"
+        @if(session('error'))
+            <div class="mt-4 rounded-md bg-red-50 p-4 border border-red-200">
+                <p class="text-sm text-red-700">{{ session('error') }}</p>
+            </div>
+        @endif
+
+        <form action="{{ url('/proses-bayar/' . $slugUrl) }}" method="POST"
               class="mt-8 grid gap-10 lg:grid-cols-[1fr_340px] lg:gap-12">
+            @csrf
 
             <input type="hidden" name="layar" value="{{ $layar }}">
             <input type="hidden" name="jam" value="{{ $jam }}">
@@ -80,8 +95,8 @@
                     <div class="flex gap-4">
                         <div class="w-16 shrink-0">
                             @if ($adaPoster)
-                                <img src="{{ asset('img/' . $film['poster']) }}"
-                                     alt="Poster film {{ $film['judul'] }}"
+                                <img src="https://image.tmdb.org/t/p/w500{{ $film->poster_url }}"
+                                     alt="Poster film {{ $film->title }}"
                                      class="aspect-2/3 w-full rounded-lg object-cover">
                             @else
                                 <div class="aspect-2/3 w-full rounded-lg bg-nema-surface-2"></div>
@@ -89,7 +104,7 @@
                         </div>
 
                         <div class="min-w-0">
-                            <h2 class="text-lg leading-tight">{{ $film['judul'] }}</h2>
+                            <h2 class="text-lg leading-tight">{{ $film->title }}</h2>
                             <p class="mt-1 text-sm text-nema-muted">{{ $layar }}</p>
                             <p class="mt-1 text-sm text-nema-muted">{{ $tanggalTeks }} &middot; {{ $jam }}</p>
                         </div>
