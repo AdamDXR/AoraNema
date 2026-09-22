@@ -18,15 +18,15 @@
         [$th, $bl, $hr] = explode('-', $tanggal->format('Y-m-d'));
         $tanggalTeks = $namaHari[$tanggal->dayOfWeek] . ', ' . (int) $hr . ' ' . $namaBulan[(int) $bl];
 
-        $tarif = require resource_path('data/tarif.php');
-        $akhirPekan = in_array($tanggal->dayOfWeek, [5, 6, 0]);
-        $harga = $tarif[$layar][$akhirPekan ? 'akhirPekan' : 'biasa'];
+        // Denah dibentuk dari kursi asli studio. seat_number berupa teks seperti "A1", jadi
+        // dipecah jadi huruf baris dan nomor, lalu diurutkan supaya "A10" tidak muncul sebelum "A2".
+        $barisKursi = $studio->seats
+            ->map(fn ($s) => ['kode' => $s->seat_number, 'baris' => preg_replace('/\d+$/', '', $s->seat_number), 'nomor' => (int) preg_replace('/^\D+/', '', $s->seat_number)])
+            ->sortBy([['baris', 'asc'], ['nomor', 'asc']])
+            ->groupBy('baris');
 
-        // Denah contoh: 8 baris, 10 kursi per baris, lorong setelah kursi kelima.
-        // Tabel seats sekarang cuma punya seat_number berupa teks seperti "A1", jadi
-        // baris dan nomornya masih dibentuk di sini. Nanti datang dari database.
-        $barisKursi = range('A', 'H');
-        $nomorKursi = range(1, 10);
+        // Lorong di tengah baris terpanjang.
+        $lorongSetelah = intdiv($barisKursi->max(fn ($b) => $b->count()) ?? 0, 2);
 
         $filmSlug = Str::slug($film->title) . '-' . $film->id;
 
@@ -55,13 +55,14 @@
 
                 <div class="no-scrollbar mt-10 overflow-x-auto pb-2">
                     <div class="mx-auto w-max space-y-2">
-                        @foreach ($barisKursi as $b)
+                        @foreach ($barisKursi as $b => $kursiBaris)
                             <div class="flex items-center gap-2">
                                 <span class="w-5 text-center text-xs text-nema-muted">{{ $b }}</span>
 
-                                @foreach ($nomorKursi as $n)
+                                @foreach ($kursiBaris as $k)
                                     @php
-                                        $kode = $b . $n;
+                                        $kode = $k['kode'];
+                                        $n = $k['nomor'];
                                         $sudahTerisi = in_array($kode, $kursiTerisi ?? []);
                                     @endphp
 
@@ -72,7 +73,7 @@
                                         {{ $n }}
                                     </button>
 
-                                    @if ($n === 5)
+                                    @if ($loop->iteration === $lorongSetelah && ! $loop->last)
                                         <span class="w-6" aria-hidden="true"></span>
                                     @endif
                                 @endforeach
@@ -101,7 +102,7 @@
                     <div class="flex gap-4">
                         <div class="w-16 shrink-0 sm:w-20">
                             @if ($adaPoster)
-                                <img src="https://image.tmdb.org/t/p/w500{{ $film->poster_url }}"
+                                <img src="{{ $film->alamatPoster() }}"
                                      alt="Poster film {{ $film->title }}"
                                      class="aspect-2/3 w-full rounded-lg object-cover">
                             @else
@@ -132,17 +133,13 @@
                         <span data-total aria-live="polite" class="text-xl font-semibold">Rp 0</span>
                     </div>
 
-                    <a data-lanjut href="{{ url('/masuk') }}" aria-disabled="true"
+                    <a data-lanjut aria-disabled="true"
                        class="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-nema-maroon px-6 font-medium text-white transition-colors hover:bg-nema-maroon-hover aria-disabled:pointer-events-none aria-disabled:opacity-40">
                         Lanjut
                     </a>
 
                     <p data-sisa aria-live="polite" class="mt-3 text-center text-xs text-nema-muted">
                         Pilih {{ $jumlah }} kursi untuk melanjutkan.
-                    </p>
-
-                    <p class="mt-2 text-center text-xs text-nema-muted">
-                        Kamu perlu masuk dulu sebelum pesanan bisa disimpan.
                     </p>
 
                 </div>
@@ -164,11 +161,7 @@
             const lanjut = document.querySelector('[data-lanjut]');
 
             const dasar = @json(url('/bayar/' . $filmSlug));
-            const bawaan = {
-                layar: @json($layar),
-                jam: @json($jam),
-                tanggal: @json($tanggal->format('Y-m-d')),
-            };
+            const bawaan = { jadwal: @json($jadwal->id) };
 
             function rupiah(angka) {
                 return 'Rp ' + angka.toLocaleString('id-ID');

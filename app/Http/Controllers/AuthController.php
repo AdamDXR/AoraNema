@@ -24,12 +24,13 @@ class AuthController extends Controller
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
             
-            // Arahkan kembali ke halaman sebelumnya atau ke beranda
-            return redirect()->intended('/');
+            // Admin langsung ke panel admin. Penonton kembali ke halaman yang tadi ingin dibuka,
+            // misalnya pilih kursi, atau ke beranda kalau tidak ada.
+            return redirect()->intended($request->user()->isAdmin() ? '/admin' : '/');
         }
 
         return back()->withErrors([
-            'email' => 'Email atau password yang Anda masukkan salah.',
+            'email' => 'Email atau kata sandi salah.',
         ])->onlyInput('email');
     }
 

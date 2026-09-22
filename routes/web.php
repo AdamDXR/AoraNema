@@ -7,69 +7,6 @@ use App\Http\Controllers\BookingController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Middleware\IsAdmin;
 
-// Beberapa pemeriksaan dipakai lebih dari satu halaman, jadi ditaruh sekali di sini.
-
-$ambilFilm = function (string $slug) {
-    $film = collect(require resource_path('data/film.php'))->firstWhere('slug', $slug);
-
-    abort_if($film === null, 404);
-
-    return $film;
-};
-
-// Tanggal dibatasi ke enam hari yang memang ditampilkan di halaman, supaya parameter
-// di URL tidak bisa dipakai meminta jadwal sembarang tanggal.
-$ambilTanggal = function () {
-    $hariIni = now()->startOfDay();
-
-    for ($i = 1; $i < 6; $i++) {
-        $kandidat = $hariIni->copy()->addDays($i);
-
-        if ($kandidat->format('Y-m-d') === request('tanggal')) {
-            return $kandidat;
-        }
-    }
-
-    return $hariIni;
-};
-
-$ambilLayarDanJam = function () {
-    $tarif = require resource_path('data/tarif.php');
-
-    $layar = request('layar');
-    abort_unless(array_key_exists($layar, $tarif), 404);
-
-    $jam = (string) request('jam');
-    abort_unless(preg_match('/^\d{2}:\d{2}$/', $jam), 404);
-
-    return [$layar, $jam];
-};
-
-// Halaman bayar dan tiket memeriksa hal yang sama persis, cuma beda tampilan.
-$pesanan = function (string $slug, string $tampilan) use ($ambilFilm, $ambilTanggal, $ambilLayarDanJam) {
-    $film = $ambilFilm($slug);
-
-    abort_if($film['mulai'] !== null, 404);
-
-    [$layar, $jam] = $ambilLayarDanJam();
-
-    $kursi = array_values(array_filter(explode(',', (string) request('kursi'))));
-
-    abort_if(count($kursi) < 1 || count($kursi) > 6, 404);
-
-    foreach ($kursi as $k) {
-        abort_unless(preg_match('/^[A-H](10|[1-9])$/', $k), 404);
-    }
-
-    $tanggal = $ambilTanggal();
-    $akhirPekan = in_array($tanggal->dayOfWeek, [5, 6, 0]);
-
-    $daftarMetode = ['qris' => 'QRIS', 'va' => 'Transfer Bank', 'ewallet' => 'Dompet Digital'];
-    $namaMetode = $daftarMetode[request('metode')] ?? 'Belum dipilih';
-
-    return view($tampilan, compact('film', 'tanggal', 'layar', 'jam', 'kursi', 'akhirPekan', 'namaMetode'));
-};
-
 Route::get('/', [HomeController::class, 'index']);
 
 Route::get('/film', [MovieController::class, 'index']);
@@ -80,6 +17,8 @@ Route::middleware(['auth', \App\Http\Middleware\IsUser::class])->group(function 
     Route::get('/kursi/{slug}', [BookingController::class, 'pilihKursi'])->where('slug', '[a-z0-9-]+');
     Route::get('/bayar/{slug}', [BookingController::class, 'halamanBayar'])->where('slug', '[a-z0-9-]+');
     Route::post('/proses-bayar/{slug}', [BookingController::class, 'prosesBayar']);
+    Route::get('/tiket-saya', [BookingController::class, 'tiketSaya']);
+    Route::post('/tiket-saya/nilai', [BookingController::class, 'nilaiFilm']);
 });
 
 Route::middleware('auth')->group(function () {
@@ -95,74 +34,10 @@ Route::middleware('guest')->group(function () {
     Route::post('/daftar', [AuthController::class, 'register']);
 });
 
-Route::get('/tiket-saya', function () {
-    $film = collect(require resource_path('data/film.php'))->keyBy('slug');
-    $tarif = require resource_path('data/tarif.php');
-    $hariIni = now()->startOfDay();
-
-    $namaHari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-    $namaBulan = [1 => 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-
-    $pesanan = collect(require resource_path('data/tiket.php'))->map(function ($p) use ($film, $tarif, $hariIni, $namaHari, $namaBulan) {
-        $tanggal = $hariIni->copy()->addDays($p['hari']);
-        $akhirPekan = in_array($tanggal->dayOfWeek, [5, 6, 0]);
-        $harga = $tarif[$p['layar']][$akhirPekan ? 'akhirPekan' : 'biasa'];
-
-        return $p + [
-            'film' => $film[$p['slug']],
-            'tanggal' => $tanggal,
-            'tanggalTeks' => $namaHari[$tanggal->dayOfWeek] . ', ' . $tanggal->day . ' ' . $namaBulan[$tanggal->month] . ' ' . $tanggal->year,
-            'kapan' => match (true) {
-                $p['hari'] === 0 => 'Hari ini',
-                $p['hari'] === 1 => 'Besok',
-                default => $p['hari'] . ' hari lagi',
-            },
-            'kode' => kodePesanan($p['slug'], $tanggal->format('Y-m-d'), $p['jam'], $p['layar'], $p['kursi']),
-            'total' => count($p['kursi']) * ($harga + 3000),
-            'aktif' => ! $p['dibatalkan'] && $tanggal->gte($hariIni),
-            'bisaDinilai' => ! $p['dibatalkan'] && $p['hari'] < 0,
-        ];
-    });
-
-    return view('tiket-saya', [
-        'tab' => request('tab') === 'riwayat' ? 'riwayat' : 'aktif',
-        'aktif' => $pesanan->where('aktif', true)->sortBy('tanggal')->values()->all(),
-        'riwayat' => $pesanan->where('aktif', false)->sortByDesc('tanggal')->values()->all(),
-        'penilaian' => session('penilaian', []),
-    ]);
-});
-
-Route::post('/tiket-saya/nilai', function (\Illuminate\Http\Request $request) {
-    $data = $request->validate([
-        'slug' => ['required', 'string'],
-        'nilai' => ['required', 'integer', 'min:1', 'max:5'],
-    ]);
-
-    // Film cuma boleh dinilai kalau benar-benar sudah ditonton: tiketnya tidak dibatalkan
-    // dan jam tayangnya sudah lewat. Tanpa ini siapa pun bisa menilai film apa saja.
-    $sudahDitonton = collect(require resource_path('data/tiket.php'))->contains(
-        fn ($p) => $p['slug'] === $data['slug'] && ! $p['dibatalkan'] && $p['hari'] < 0
-    );
-
-    abort_unless($sudahDitonton, 403);
-
-    // Sementara disimpan di sesi browser. Begitu akun dan film di database tersedia, ganti dengan:
-    //   UserEvent::create(['user_id' => auth()->id(), 'movie_id' => $movie->id,
-    //                      'event_type' => 'rate', 'event_value' => $data['nilai']]);
-    // Tabel user_events memang dirancang untuk ini, dan isinya dipakai model rekomendasi.
-    session()->put('penilaian.' . $data['slug'], (int) $data['nilai']);
-
-    $judul = collect(require resource_path('data/film.php'))->firstWhere('slug', $data['slug'])['judul'];
-
-    return redirect('/tiket-saya?tab=riwayat')
-        ->with('sukses', 'Penilaianmu untuk "' . $judul . '" tersimpan: ' . $data['nilai'] . ' dari 5.');
-});
-
 // ---------------------------------------------------------------------------
-// Halaman admin. BELUM TERKUNCI karena sistem akun belum ada.
-// Begitu login jadi, seluruh grup ini wajib diberi middleware auth dan cek role.
+// Halaman admin, hanya untuk akun dengan role admin.
 // Ditulis sebagai closure, bukan file controller, supaya tidak menabrak
-// controller yang sedang dikerjakan di branch adam/controller.
+// controller yang dulu dikerjakan di branch adam/controller.
 // ---------------------------------------------------------------------------
 
 Route::prefix('admin')->middleware(['auth', IsAdmin::class])->group(function () {
@@ -427,6 +302,8 @@ function aturanFilm(\Illuminate\Http\Request $request): array
 {
     $data = $request->validate([
         'title' => ['required', 'string', 'max:255'],
+        'tagline' => ['nullable', 'string', 'max:255'],
+        'usia' => ['nullable', 'in:SU,13+,17+,21+'],
         'synopsis' => ['nullable', 'string', 'max:5000'],
         'poster_url' => ['nullable', 'string', 'max:255'],
         'duration_minutes' => ['nullable', 'integer', 'min:1', 'max:600'],
@@ -435,6 +312,7 @@ function aturanFilm(\Illuminate\Http\Request $request): array
         'genre.*' => ['integer', 'exists:genres,id'],
     ], [], [
         'title' => 'judul',
+        'usia' => 'batas usia',
         'synopsis' => 'sinopsis',
         'poster_url' => 'alamat poster',
         'duration_minutes' => 'durasi',
@@ -446,6 +324,7 @@ function aturanFilm(\Illuminate\Http\Request $request): array
     // Kotak centang tidak terkirim sama sekali kalau tidak dicentang,
     // jadi nilainya diambil terpisah, bukan lewat validate.
     $data['is_showing'] = $request->boolean('is_showing');
+    $data['pilihan'] = $request->boolean('pilihan');
 
     return $data;
 }
@@ -528,12 +407,4 @@ function jadwalBentrok(int $studioId, string $waktu, ?int $kecuali = null): ?str
 
     return 'Studio itu sudah dipakai "' . ($bentrok->movie?->title ?? 'film lain')
         . '" pada jam yang sama. Pilih jam atau studio lain.';
-}
-
-// Kode pesanan dibuat tetap dari isi pesanan, jadi memuat ulang halaman tidak mengubahnya.
-// Dipakai halaman tiket dan Tiket Saya, rumusnya satu supaya kodenya selalu sama di keduanya.
-// Nanti diganti kolom booking_code di database.
-function kodePesanan(string $slug, string $tanggal, string $jam, string $layar, array $kursi): string
-{
-    return 'AORA-' . strtoupper(substr(md5($slug . $tanggal . $jam . $layar . implode(',', $kursi)), 0, 6));
 }

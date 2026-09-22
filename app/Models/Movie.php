@@ -43,15 +43,17 @@ class Movie extends Model
         return [
             'slug' => Str::slug($this->title) . '-' . $this->id,
             'judul' => $this->title,
-            'poster' => $this->poster_url,
+            'poster' => $this->alamatPoster(),
+            'tagline' => $this->tagline,
             'genre' => $genre->implode(', '),
             'durasi' => $this->duration_minutes,
             'durasiTeks' => $this->duration_minutes
                 ? intdiv($this->duration_minutes, 60) . 'j ' . ($this->duration_minutes % 60) . 'm'
                 : null,
-            // Belum ada kolom batas usia di tabel movies. Dibiarkan kosong supaya tidak
-            // menampilkan tanda usia karangan; tandanya muncul sendiri begitu kolomnya ada.
-            'usia' => $this->usia ?? null,
+            // Diisi admin. TMDB tidak menyediakan batas usia Indonesia, jadi film dari seeder
+            // kosong dan tandanya tidak ditampilkan sampai admin mengisinya.
+            'usia' => $this->usia,
+            'pilihan' => (bool) $this->pilihan,
             'format' => self::formatLayar($genre->all()),
             'rilis' => $this->release_date,
             'tayang' => (bool) $this->is_showing,
@@ -59,6 +61,19 @@ class Movie extends Model
                 ? $rilis->day . ' ' . $namaBulan[$rilis->month]
                 : null,
         ];
+    }
+
+    // Seeder TMDB menyimpan alamat lengkap, sedangkan admin boleh mengisi nama berkas di
+    // public/img/. Keduanya diubah jadi alamat yang bisa langsung dipakai di <img>.
+    public function alamatPoster(): ?string
+    {
+        if (! $this->poster_url) {
+            return null;
+        }
+
+        return Str::startsWith($this->poster_url, ['http://', 'https://'])
+            ? $this->poster_url
+            : asset('img/' . $this->poster_url);
     }
 
     // IMAX dan 3D hanya untuk genre yang layar besarnya terasa. Nama genre dari TMDB berbahasa

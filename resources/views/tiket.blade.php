@@ -22,9 +22,9 @@
     <div class="mx-auto max-w-lg px-4 py-10 sm:px-6">
 
         @if(session('warning'))
-            <div class="mb-6 rounded-md bg-yellow-50 p-4 border border-yellow-200 text-center">
-                <p class="text-sm text-yellow-800">{{ session('warning') }}</p>
-            </div>
+            <p role="status" class="mb-6 rounded-lg border border-nema-line bg-nema-surface p-4 text-sm text-nema-muted">
+                {{ session('warning') }}
+            </p>
         @endif
 
         <h1 class="text-center text-2xl sm:text-3xl">Tiketmu siap</h1>
