@@ -67,7 +67,11 @@
                     <div class="min-w-0 lg:mt-6">
                         <h1 class="text-2xl leading-tight sm:text-3xl">{{ $film['judul'] }}</h1>
 
-                        <p class="mt-2 text-nema-muted">{{ $film['tagline'] }}</p>
+                        @if ($film['tagline'])
+
+                            <p class="mt-2 text-nema-muted">{{ $film['tagline'] }}</p>
+
+                        @endif
 
                         <div class="mt-4 flex flex-wrap items-center gap-2 text-sm">
                             @if ($film['genre'])

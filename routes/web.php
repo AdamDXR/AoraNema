@@ -302,6 +302,8 @@ function aturanFilm(\Illuminate\Http\Request $request): array
 {
     $data = $request->validate([
         'title' => ['required', 'string', 'max:255'],
+        'tagline' => ['nullable', 'string', 'max:255'],
+        'usia' => ['nullable', 'in:SU,13+,17+,21+'],
         'synopsis' => ['nullable', 'string', 'max:5000'],
         'poster_url' => ['nullable', 'string', 'max:255'],
         'duration_minutes' => ['nullable', 'integer', 'min:1', 'max:600'],
@@ -310,6 +312,7 @@ function aturanFilm(\Illuminate\Http\Request $request): array
         'genre.*' => ['integer', 'exists:genres,id'],
     ], [], [
         'title' => 'judul',
+        'usia' => 'batas usia',
         'synopsis' => 'sinopsis',
         'poster_url' => 'alamat poster',
         'duration_minutes' => 'durasi',
@@ -321,6 +324,7 @@ function aturanFilm(\Illuminate\Http\Request $request): array
     // Kotak centang tidak terkirim sama sekali kalau tidak dicentang,
     // jadi nilainya diambil terpisah, bukan lewat validate.
     $data['is_showing'] = $request->boolean('is_showing');
+    $data['pilihan'] = $request->boolean('pilihan');
 
     return $data;
 }

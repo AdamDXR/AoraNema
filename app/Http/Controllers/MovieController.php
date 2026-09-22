@@ -62,7 +62,6 @@ class MovieController extends Controller
         // 3. Format data persis seperti yang diharapkan oleh film.blade.php
         $film = $movie->kartu() + [
             'slug' => $slug,
-            'tagline' => 'Saksikan keseruannya di bioskop kesayangan Anda.',
             'sinopsis' => $movie->synopsis ?? 'Sinopsis belum tersedia.',
             // Film yang belum tayang menampilkan tanggal rilisnya, bukan jadwal.
             'mulai' => $movie->is_showing ? null : $movie->release_date,

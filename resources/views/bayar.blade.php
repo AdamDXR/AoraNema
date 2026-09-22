@@ -90,7 +90,7 @@
                     <div class="flex gap-4">
                         <div class="w-16 shrink-0">
                             @if ($adaPoster)
-                                <img src="{{ $film->poster_url }}"
+                                <img src="{{ $film->alamatPoster() }}"
                                      alt="Poster film {{ $film->title }}"
                                      class="aspect-2/3 w-full rounded-lg object-cover">
                             @else
