@@ -65,7 +65,9 @@ return [
     |
     */
 
-    'timezone' => env('APP_TIMEZONE', 'UTC'),
+    // Jadwal tayang ditulis dalam jam WIB, jadi aplikasi ikut WIB. Dengan UTC, jadwal
+    // yang sudah lewat 7 jam lalu masih dianggap belum mulai dan masih bisa dipesan.
+    'timezone' => env('APP_TIMEZONE', 'Asia/Jakarta'),
 
     /*
     |--------------------------------------------------------------------------

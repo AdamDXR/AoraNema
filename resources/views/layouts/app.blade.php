@@ -20,6 +20,11 @@
 
             <div class="flex items-center gap-1 sm:gap-3">
 
+                <a href="{{ url('/') }}" @if (request()->is('/')) aria-current="page" @endif
+                    class="inline-flex min-h-11 items-center px-2 text-sm transition-colors sm:px-3 {{ request()->is('/') ? 'text-nema-text' : 'text-nema-muted hover:text-nema-text' }}">
+                    Beranda
+                </a>
+
                 <a href="{{ url('/film') }}" @if (request()->is('film')) aria-current="page" @endif
                     class="inline-flex min-h-11 items-center px-2 text-sm transition-colors sm:px-3 {{ request()->is('film') ? 'text-nema-text' : 'text-nema-muted hover:text-nema-text' }}">
                     Film
@@ -104,6 +109,38 @@
             AoraNema
         </p>
     </footer>
+
+    <script>
+        // Posisi gulir diingat per halaman, lalu dikembalikan saat halaman dimuat lagi: waktu
+        // di-refresh, waktu menekan Kembali di browser, dan waktu tombol seperti pilihan tanggal,
+        // saringan, urutan, atau tab memuat ulang halaman yang sama dengan isian berbeda.
+        // Tanpa ini penonton selalu dilempar ke atas. Datang dari halaman lain tetap mulai dari atas.
+        (function () {
+            const kunci = 'gulir:' + location.pathname;
+
+            if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
+            window.addEventListener('pagehide', function () {
+                try { sessionStorage.setItem(kunci, String(window.scrollY)); } catch (e) {}
+            });
+
+            // Tautan ke bagian tertentu, seperti #semua-film, lebih diutamakan daripada posisi lama.
+            if (location.hash) return;
+
+            const jenis = (performance.getEntriesByType('navigation')[0] || {}).type;
+            let dariHalamanIni = false;
+            try { dariHalamanIni = new URL(document.referrer).pathname === location.pathname; } catch (e) {}
+
+            if (jenis !== 'reload' && jenis !== 'back_forward' && ! dariHalamanIni) return;
+
+            let posisi = null;
+            try { posisi = sessionStorage.getItem(kunci); } catch (e) {}
+            if (posisi === null) return;
+
+            // behavior 'instant' supaya tidak dianimasikan dari atas oleh scroll-smooth di <html>.
+            window.scrollTo({ top: Number(posisi), behavior: 'instant' });
+        })();
+    </script>
 
 </body>
 

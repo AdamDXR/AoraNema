@@ -41,7 +41,7 @@
                             <td class="py-4 pr-4 text-nema-muted">
                                 @if ($p->showtime)
                                     {{ \Illuminate\Support\Carbon::parse($p->showtime->show_time)->format('d/m H:i') }}
-                                    &middot; {{ $p->showtime->studio?->name ?? '—' }}
+                                    &middot; {{ $p->showtime->studio?->label() ?? '—' }}
                                 @else
                                     &mdash;
                                 @endif

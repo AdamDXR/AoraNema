@@ -47,7 +47,20 @@
                        value="{{ old('name', $studio->name) }}"
                        class="mt-2 block min-h-11 w-full rounded-md border border-nema-line bg-nema-surface px-4">
                 <p class="mt-2 text-xs text-nema-muted">
-                    Contoh: Regular 2D, Regular 3D, IMAX, Premiere 2D.
+                    Contoh: Studio 1. Nama ini tampil di tiket supaya penonton tahu pintu mana yang dituju.
+                </p>
+            </div>
+
+            <div>
+                <label for="format" class="block text-sm">Format layar</label>
+                <select id="format" name="format" required
+                        class="mt-2 block min-h-11 w-full rounded-md border border-nema-line bg-nema-surface px-4">
+                    @foreach (\App\Models\Studio::FORMAT as $f)
+                        <option value="{{ $f }}" @selected(old('format', $studio->format ?? 'Regular 2D') === $f)>{{ $f }}</option>
+                    @endforeach
+                </select>
+                <p class="mt-2 text-xs text-nema-muted">
+                    Di halaman film, jam tayang dikelompokkan menurut format ini. Beberapa studio boleh berformat sama.
                 </p>
             </div>
 
@@ -70,6 +83,29 @@
                     <p class="mt-2 text-xs text-nema-muted">Kursi dinomori 1 sampai angka ini.</p>
                 </div>
             </div>
+
+            <fieldset class="grid gap-6 sm:grid-cols-2">
+                <legend class="mb-3 text-sm">Harga per kursi, dalam rupiah tanpa titik</legend>
+
+                <div>
+                    <label for="harga_biasa" class="block text-sm text-nema-muted">Senin sampai Kamis</label>
+                    <input type="number" id="harga_biasa" name="harga_biasa" min="0" max="1000000" step="1000" required
+                           value="{{ old('harga_biasa', $studio->harga_biasa ?? 45000) }}"
+                           class="mt-2 block min-h-11 w-full rounded-md border border-nema-line bg-nema-surface px-4">
+                </div>
+
+                <div>
+                    <label for="harga_akhir_pekan" class="block text-sm text-nema-muted">Jumat sampai Minggu</label>
+                    <input type="number" id="harga_akhir_pekan" name="harga_akhir_pekan" min="0" max="1000000" step="1000" required
+                           value="{{ old('harga_akhir_pekan', $studio->harga_akhir_pekan ?? 55000) }}"
+                           class="mt-2 block min-h-11 w-full rounded-md border border-nema-line bg-nema-surface px-4">
+                </div>
+            </fieldset>
+
+            <p class="text-sm text-nema-muted">
+                Mengubah harga ikut mengubah jadwal studio ini yang belum lewat. Harga di pesanan
+                yang sudah dibuat tidak berubah.
+            </p>
 
             <p class="text-sm text-nema-muted">
                 Kursi dibuat otomatis dari dua angka di atas, misalnya 8 baris dikali 10 kursi

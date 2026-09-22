@@ -17,8 +17,9 @@ class CinemaSeeder extends Seeder
 
         // 1. Buat 2 Studio Fisik
         $studios = [
-            ['name' => 'Studio 1 (Regular)', 'capacity' => 50],
-            ['name' => 'Studio 2 (IMAX)', 'capacity' => 50],
+            // Nama studio dipakai langsung sebagai nama format di halaman detail film
+            ['name' => 'Regular 2D', 'capacity' => 50],
+            ['name' => 'IMAX', 'capacity' => 50],
         ];
 
         foreach ($studios as $studioData) {

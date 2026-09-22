@@ -29,6 +29,26 @@ class Showtime extends Model
     }
 
     // relasi ke tabel bookings (1 jadwal bisa dibooking banyak tiket)
+    // Jeda antar tayangan untuk membersihkan studio dan mengganti penonton.
+    public const JEDA_MENIT = 15;
+
+    // Jadwal lain di studio yang sama yang waktunya bertabrakan dengan film ini, atau null.
+    // Dua jadwal bertabrakan kalau satu mulai sebelum yang lain selesai, ditambah jeda.
+    // Film tanpa durasi dianggap dua jam.
+    public static function bentrokDengan(int $studioId, int $movieId, \Carbon\CarbonInterface $mulai, ?int $kecuali = null): ?self
+    {
+        $lama = fn ($durasi) => ($durasi ?: 120) + self::JEDA_MENIT;
+        $selesai = $mulai->copy()->addMinutes($lama(Movie::find($movieId)?->duration_minutes));
+
+        return self::with('movie')
+            ->where('studio_id', $studioId)
+            ->whereBetween('show_time', [$mulai->copy()->subDay(), $selesai])
+            ->when($kecuali, fn ($q) => $q->whereKeyNot($kecuali))
+            ->get()
+            ->first(fn ($lain) => $lain->show_time->lt($selesai)
+                && $lain->show_time->copy()->addMinutes($lama($lain->movie?->duration_minutes))->gt($mulai));
+    }
+
     public function bookings(): HasMany
     {
         return $this->hasMany(Booking::class);

@@ -123,32 +123,22 @@
                     @else
                     <div class="mt-4 divide-y divide-nema-line/40 border-y border-nema-line/40">
                         @foreach ($jadwal as $layar => $daftarJam)
-                            @php
-                                // Harga ditetapkan per jadwal oleh admin. Kalau semua jam di studio ini
-                                // sama harganya, cukup ditulis sekali di samping nama studio.
-                                $hargaSama = $daftarJam->pluck('price')->unique()->count() === 1;
-                            @endphp
-
                             <div class="py-5" data-baris>
 
                                 <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                                     <h3 class="text-base">{{ $layar }}</h3>
-                                    @if ($hargaSama)
-                                        <p class="text-sm text-nema-muted">
-                                            Rp {{ number_format($daftarJam->first()->price, 0, ',', '.') }}
-                                        </p>
-                                    @endif
+                                    {{-- Harga ditentukan studio dan harinya, jadi semua jam di baris ini sama harganya. --}}
+                                    <p class="text-sm text-nema-muted">
+                                        Rp {{ number_format($daftarJam->first()->price, 0, ',', '.') }}
+                                    </p>
                                 </div>
 
                                 <div class="mt-3 flex flex-wrap gap-2">
                                     @foreach ($daftarJam as $j)
                                         <button type="button" data-jam="{{ $j->show_time->format('H:i') }}"
                                             data-jadwal="{{ $j->id }}" data-harga="{{ $j->price }}" aria-pressed="false"
-                                            class="inline-flex min-h-11 min-w-20 flex-col items-center justify-center rounded-md border border-nema-line px-4 py-1.5 transition-colors hover:bg-nema-surface aria-pressed:border-nema-accent aria-pressed:bg-nema-maroon aria-pressed:text-white">
-                                            <span>{{ $j->show_time->format('H:i') }}</span>
-                                            @unless ($hargaSama)
-                                                <span class="text-xs opacity-80">Rp {{ number_format($j->price, 0, ',', '.') }}</span>
-                                            @endunless
+                                            class="inline-flex min-h-11 min-w-20 items-center justify-center rounded-md border border-nema-line px-4 transition-colors hover:bg-nema-surface aria-pressed:border-nema-accent aria-pressed:bg-nema-maroon aria-pressed:text-white">
+                                            {{ $j->show_time->format('H:i') }}
                                         </button>
                                     @endforeach
                                 </div>

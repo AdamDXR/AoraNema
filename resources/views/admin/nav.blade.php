@@ -14,6 +14,3 @@
     </div>
 </nav>
 
-<p class="border-b border-nema-line/40 bg-nema-surface px-4 py-3 text-center text-sm text-nema-muted sm:px-6">
-    Halaman admin ini belum terkunci. Siapa pun yang tahu alamatnya bisa membukanya.
-</p>

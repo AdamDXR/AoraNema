@@ -13,9 +13,11 @@
         @include('partials.usia', ['usia' => $f['usia']])
     @endif
 
-    <span class="inline-flex h-7 min-w-0 items-center rounded-md bg-nema-surface-2 px-2">
-        <span class="truncate"><span class="sr-only">Format </span>{{ implode(' · ', $f['format']) }}</span>
-    </span>
+    @if ($f['format'])
+        <span class="inline-flex h-7 min-w-0 items-center rounded-md bg-nema-surface-2 px-2">
+            <span class="truncate"><span class="sr-only">Format </span>{{ implode(' · ', $f['format']) }}</span>
+        </span>
+    @endif
 </div>
 
 @if ($f['mulaiTeks'])

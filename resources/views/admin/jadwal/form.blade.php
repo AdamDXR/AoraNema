@@ -26,6 +26,12 @@
             </div>
         @endif
 
+        @if (session('gagal'))
+            <p role="alert" class="mt-6 rounded-lg border border-nema-accent bg-nema-surface p-4 text-sm">
+                {{ session('gagal') }}
+            </p>
+        @endif
+
         <form method="post"
               action="{{ $jadwal->exists ? url('/admin/jadwal/' . $jadwal->id) : url('/admin/jadwal') }}"
               class="mt-8 space-y-6">
@@ -54,32 +60,68 @@
                     <option value="">Pilih studio</option>
                     @foreach ($studio as $s)
                         <option value="{{ $s->id }}" @selected(old('studio_id', $jadwal->studio_id) == $s->id)>
-                            {{ $s->name }} ({{ $s->capacity }} kursi)
+                            {{ $s->label() }} ({{ $s->capacity }} kursi)
                         </option>
                     @endforeach
                 </select>
             </div>
 
-            <div class="grid gap-6 sm:grid-cols-2">
+            @if ($jadwal->exists)
                 <div>
                     <label for="show_time" class="block text-sm">Waktu tayang</label>
                     <input type="datetime-local" id="show_time" name="show_time" required
-                           value="{{ old('show_time', $jadwal->show_time ? \Illuminate\Support\Carbon::parse($jadwal->show_time)->format('Y-m-d\TH:i') : '') }}"
+                           value="{{ old('show_time', \Illuminate\Support\Carbon::parse($jadwal->show_time)->format('Y-m-d\TH:i')) }}"
                            class="mt-2 block min-h-11 w-full rounded-md border border-nema-line bg-nema-surface px-4">
+                </div>
+            @else
+                {{-- Menambah jadwal bisa sekaligus untuk beberapa hari dan sampai lima jam,
+                     supaya admin tidak perlu menyimpan satu per satu. --}}
+                <div class="grid gap-6 sm:grid-cols-2">
+                    <div>
+                        <label for="tanggal_mulai" class="block text-sm">Dari tanggal</label>
+                        <input type="date" id="tanggal_mulai" name="tanggal_mulai" required
+                               min="{{ now()->format('Y-m-d') }}"
+                               value="{{ old('tanggal_mulai', now()->format('Y-m-d')) }}"
+                               class="mt-2 block min-h-11 w-full rounded-md border border-nema-line bg-nema-surface px-4">
+                    </div>
+
+                    <div>
+                        <label for="tanggal_selesai" class="block text-sm">Sampai tanggal</label>
+                        <input type="date" id="tanggal_selesai" name="tanggal_selesai" aria-describedby="tanggal-ket"
+                               min="{{ now()->format('Y-m-d') }}" max="{{ now()->addDays(30)->format('Y-m-d') }}"
+                               value="{{ old('tanggal_selesai') }}"
+                               class="mt-2 block min-h-11 w-full rounded-md border border-nema-line bg-nema-surface px-4">
+                        <p id="tanggal-ket" class="mt-2 text-xs text-nema-muted">Kosongkan kalau cuma satu hari.</p>
+                    </div>
                 </div>
 
-                <div>
-                    <label for="price" class="block text-sm">Harga per kursi</label>
-                    <input type="number" id="price" name="price" min="0" max="1000000" step="1000" required
-                           value="{{ old('price', $jadwal->price ?? 45000) }}"
-                           class="mt-2 block min-h-11 w-full rounded-md border border-nema-line bg-nema-surface px-4">
-                    <p class="mt-2 text-xs text-nema-muted">Dalam rupiah, tanpa titik.</p>
-                </div>
-            </div>
+                <fieldset>
+                    <legend class="text-sm">Jam tayang, sampai lima</legend>
+                    <div class="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                        @for ($i = 0; $i < 5; $i++)
+                            <label class="block">
+                                <span class="sr-only">Jam ke-{{ $i + 1 }}</span>
+                                <input type="time" name="jam[]" @if ($i === 0) required @endif
+                                       value="{{ old('jam.' . $i) }}"
+                                       class="block min-h-11 w-full rounded-md border border-nema-line bg-nema-surface px-3">
+                            </label>
+                        @endfor
+                    </div>
+                    <p class="mt-2 text-xs text-nema-muted">
+                        Jam yang kosong diabaikan. Jam yang bertabrakan dengan film lain dilewati, sisanya tetap disimpan.
+                    </p>
+                </fieldset>
+            @endif
 
             <p class="text-sm text-nema-muted">
-                Satu studio tidak boleh punya dua jadwal di waktu yang sama. Kalau bentrok,
-                simpanannya ditolak dan kamu diberi tahu jadwal mana yang bertabrakan.
+                Harga per kursi diambil otomatis dari tarif studio: hari biasa, atau akhir pekan
+                untuk Jumat sampai Minggu. Tarifnya diubah di halaman Studio.
+            </p>
+
+            <p class="text-sm text-nema-muted">
+                Satu studio tidak bisa memutar dua film yang waktunya bertabrakan, termasuk jeda
+                15 menit di antaranya. Kalau bentrok, simpanannya ditolak dan kamu diberi tahu
+                jadwal mana yang bertabrakan.
             </p>
 
             <div class="flex flex-wrap gap-3 border-t border-nema-line/40 pt-6">

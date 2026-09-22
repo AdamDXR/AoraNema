@@ -54,7 +54,7 @@ class Movie extends Model
             // kosong dan tandanya tidak ditampilkan sampai admin mengisinya.
             'usia' => $this->usia,
             'pilihan' => (bool) $this->pilihan,
-            'format' => self::formatLayar($genre->all()),
+            'format' => $this->formatTayang(),
             'rilis' => $this->release_date,
             'tayang' => (bool) $this->is_showing,
             'mulaiTeks' => ! $this->is_showing && $rilis?->isFuture()
@@ -76,13 +76,28 @@ class Movie extends Model
             : asset('img/' . $this->poster_url);
     }
 
-    // IMAX dan 3D hanya untuk genre yang layar besarnya terasa. Nama genre dari TMDB berbahasa
-    // Inggris, sedangkan yang ditambah lewat admin bisa berbahasa Indonesia, jadi keduanya dicek.
-    // Begitu studio punya kolom format, ini diganti dengan format dari jadwal tayangnya.
-    public static function formatLayar(array $genre): array
+    // Jadwal yang belum lewat, dipakai untuk tahu format apa saja yang sedang ditawarkan.
+    public function jadwalMendatang(): HasMany
     {
-        $layarBesar = ['Action', 'Adventure', 'Science Fiction', 'Horror', 'Laga', 'Petualangan', 'Fiksi Ilmiah', 'Horor'];
+        return $this->hasMany(Showtime::class)->where('show_time', '>=', now());
+    }
 
-        return array_intersect($genre, $layarBesar) ? ['2D', '3D', 'IMAX'] : ['2D'];
+    // Format layar yang benar-benar ada di jadwal mendatang film ini, disingkat untuk kartu:
+    // 2D, 3D, IMAX. Film tanpa jadwal mendatang tidak menampilkan format sama sekali.
+    // Muat jadwalMendatang.studio di query supaya tidak ada query tambahan per film.
+    public function formatTayang(): array
+    {
+        $jadwal = $this->relationLoaded('jadwalMendatang')
+            ? $this->jadwalMendatang
+            : $this->jadwalMendatang()->with('studio')->get();
+
+        $ada = $jadwal->pluck('studio.format')->unique()->all();
+        $singkat = ['Regular 2D' => '2D', 'Regular 3D' => '3D', 'IMAX' => 'IMAX'];
+
+        return collect(Studio::FORMAT)
+            ->filter(fn ($f) => in_array($f, $ada))
+            ->map(fn ($f) => $singkat[$f])
+            ->values()
+            ->all();
     }
 }
