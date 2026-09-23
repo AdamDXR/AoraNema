@@ -104,7 +104,9 @@
                         </p>
                     </div>
                 @else
-                    <div class="no-scrollbar mt-6 flex gap-2 overflow-x-auto pb-2">
+                    {{-- relative: keterangan sr-only di dalam kartu tanggal memakai posisi absolut, dan tanpa
+                         pembungkus relative ia keluar dari baris ini lalu melebarkan seluruh halaman. --}}
+                    <div class="no-scrollbar relative mt-6 flex gap-2 overflow-x-auto pb-2">
                         @foreach ($daftarTanggal as $t)
                             @php
                                 $aktif = $t->format('Y-m-d') === $tanggal->format('Y-m-d');

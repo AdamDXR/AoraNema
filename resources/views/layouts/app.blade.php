@@ -55,6 +55,11 @@
                                    class="flex min-h-11 items-center rounded-md px-3 text-sm text-nema-muted transition-colors hover:bg-nema-surface-2 hover:text-nema-text">
                                     Tiket Saya
                                 </a>
+
+                                <a href="{{ url('/feedback') }}"
+                                   class="flex min-h-11 items-center rounded-md px-3 text-sm text-nema-muted transition-colors hover:bg-nema-surface-2 hover:text-nema-text">
+                                    Kirim Masukan
+                                </a>
                             @endif
 
                             @if (Auth::user()->isAdmin())

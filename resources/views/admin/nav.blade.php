@@ -2,7 +2,7 @@
      bukan cuma warna teks, supaya perbedaannya tetap terbaca. --}}
 <nav aria-label="Menu admin" class="border-b border-nema-line/40">
     <div class="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 sm:px-6">
-        @foreach (['film' => 'Film', 'studio' => 'Studio', 'jadwal' => 'Jadwal Tayang', 'pesanan' => 'Pesanan'] as $jalur => $label)
+        @foreach (['film' => 'Film', 'studio' => 'Studio', 'jadwal' => 'Jadwal Tayang', 'pesanan' => 'Pesanan', 'feedback' => 'Masukan'] as $jalur => $label)
             @php $aktif = request()->is('admin/' . $jalur . '*'); @endphp
 
             <a href="{{ url('/admin/' . $jalur) }}"

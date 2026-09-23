@@ -42,15 +42,28 @@ class FeedbackController extends Controller
         try {
             $analyzed = [];
 
+            $adaYangBelumDianalisis = false;
+
             foreach ($validated['feedbacks'] as $item) {
-                // Memanggil FastAPI endpoint /sentiment
-                $prediction = $ml->analyzeSentiment($item['comment']);
+                try {
+                    // Memanggil FastAPI endpoint /sentiment
+                    $prediction = $ml->analyzeSentiment($item['comment']);
+                    $nada = $prediction['sentiment'];
+                    $keyakinan = $prediction['confidence'];
+                } catch (Throwable $e) {
+                    // Layanan sentimen sedang tidak bisa dihubungi. Masukannya tetap disimpan dengan
+                    // nada 'unknown', bukan ditebak, supaya isi masukan penonton tidak hilang.
+                    report($e);
+                    $nada = 'unknown';
+                    $keyakinan = null;
+                    $adaYangBelumDianalisis = true;
+                }
 
                 $analyzed[] = [
                     'category' => $item['category'],
                     'comment' => $item['comment'],
-                    'sentiment' => $prediction['sentiment'],
-                    'confidence' => $prediction['confidence'],
+                    'sentiment' => $nada,
+                    'confidence' => $keyakinan,
                 ];
             }
 
@@ -70,19 +83,32 @@ class FeedbackController extends Controller
                 return $results;
             });
 
-            // Mengembalikan JSON response. Jika FE mau pakai Blade redirect, silakan disesuaikan di sisi FE.
-            return response()->json([
-                'message' => 'Feedback berhasil disimpan.',
-                'data' => $saved,
-            ], 201);
+            $pesan = count($saved) > 1
+                ? count($saved) . ' masukan terkirim. Terima kasih sudah menuliskannya.'
+                : 'Masukanmu terkirim. Terima kasih sudah menuliskannya.';
+
+            if ($adaYangBelumDianalisis) {
+                $pesan .= ' Nada masukannya belum bisa dianalisis sekarang, tapi isinya sudah tersimpan.';
+            }
+
+            // Form di website mengharapkan halaman, bukan JSON. Jawaban JSON tetap disediakan
+            // untuk pemanggil lain, misalnya kalau nanti ada aplikasi ponsel.
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $pesan, 'data' => $saved], 201);
+            }
+
+            return redirect('/feedback')->with('sukses', $pesan);
 
         } catch (Throwable $e) {
             report($e);
 
-            return response()->json([
-                'message' => 'Feedback belum dapat diproses. Silakan coba kembali.',
-                'error' => $e->getMessage()
-            ], 503);
+            $pesan = 'Masukanmu belum bisa diproses sekarang. Coba lagi beberapa saat lagi.';
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $pesan, 'error' => $e->getMessage()], 503);
+            }
+
+            return back()->withInput()->with('gagal', $pesan);
         }
     }
 
