@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Movie;
 use Illuminate\Support\Facades\Auth;
-use App\Services\MLRecommendationService;
+use App\Services\AoranemaMlService;
 
 class HomeController extends Controller
 {
@@ -30,7 +30,7 @@ class HomeController extends Controller
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
         if ($user && $user->isUser()) {
-            $mlService = new MLRecommendationService();
+            $mlService = new AoranemaMlService();
             // candidates: film yang sedang tayang
             $candidates = $dbMovies;
             // movieCatalog: semua film di DB untuk mencocokkan riwayat user
