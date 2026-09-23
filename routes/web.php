@@ -19,6 +19,8 @@ Route::middleware(['auth', \App\Http\Middleware\IsUser::class])->group(function 
     Route::post('/proses-bayar/{slug}', [BookingController::class, 'prosesBayar']);
     Route::get('/tiket-saya', [BookingController::class, 'tiketSaya']);
     Route::post('/tiket-saya/nilai', [BookingController::class, 'nilaiFilm']);
+    Route::get('/feedback', [\App\Http\Controllers\FeedbackController::class, 'create']);
+    Route::post('/feedback', [\App\Http\Controllers\FeedbackController::class, 'store']);
 });
 
 // Pemberitahuan pembayaran dari server Midtrans. Tidak butuh login, keasliannya dicek lewat tanda tangan.
@@ -373,6 +375,10 @@ Route::prefix('admin')->middleware(['auth', IsAdmin::class])->group(function () 
                 ->paginate(25),
         ]);
     });
+
+    // ----- Feedback --------------------------------------------------------
+
+    Route::get('/feedback', [\App\Http\Controllers\FeedbackController::class, 'indexAdmin']);
 });
 
 // ---------------------------------------------------------------------------

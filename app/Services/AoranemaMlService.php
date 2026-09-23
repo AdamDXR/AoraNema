@@ -6,9 +6,25 @@ use App\Models\User;
 use App\Models\UserEvent;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
-class MLRecommendationService
+class AoranemaMlService
 {
+    private string $baseUrl;
+    private int $timeout;
+
+    public function __construct()
+    {
+        // Tetap menggunakan config('services.ml.url') agar tidak perlu mengubah env yang sudah ada.
+        $this->baseUrl = rtrim(
+            config('services.ml.url', 'http://127.0.0.1:8001'),
+            '/'
+        );
+
+        // Gunakan timeout default 60 detik jika tidak ada
+        $this->timeout = config('services.ml.timeout', 60);
+    }
+
     /**
      * Dapatkan rekomendasi untuk user tertentu.
      * Mengembalikan daftar ID movie (movie_id) yang direkomendasikan secara berurutan.
@@ -16,10 +32,7 @@ class MLRecommendationService
      */
     public function getRecommendationsForUser(User $user, $candidates, $movieCatalog): array
     {
-        $apiUrl = config('services.ml.url') . '/recommendations';
-
         // 1. Cek Riwayat Interaksi (menggunakan UserEvent dengan event_type = 'rate')
-        // Sesuai panduan integrasi, ML saat ini menggunakan history rating.
         $userEvents = UserEvent::where('user_id', $user->id)
                                ->where('event_type', 'rate')
                                ->get();
@@ -27,8 +40,6 @@ class MLRecommendationService
         $interactions = [];
         $favorite_movie_ids = [];
 
-        // Penilaian disimpan per pesanan, jadi film yang ditonton dua kali bisa punya dua nilai.
-        // Nilainya dirata-rata supaya satu film tetap dikirim sekali ke layanan ML.
         foreach ($userEvents->groupBy('movie_id') as $movieId => $nilaiFilm) {
             $interactions[] = [
                 'movie_id' => $movieId,
@@ -56,27 +67,51 @@ class MLRecommendationService
             // Mode onboarding
             $favorite_genres = $user->genres()->pluck('name')->toArray();
             $payload['favorite_genres'] = $favorite_genres;
-            $payload['favorite_movie_ids'] = $favorite_movie_ids; // biasanya kosong di onboarding
+            $payload['favorite_movie_ids'] = $favorite_movie_ids;
         }
 
         // 4. Kirim Request
         try {
-            $response = Http::timeout(3)->post($apiUrl, $payload);
+            $response = Http::acceptJson()
+                ->asJson()
+                ->timeout($this->timeout)
+                ->post($this->baseUrl . '/recommendations', $payload);
             
             if ($response->successful()) {
                 $data = $response->json();
                 if (isset($data['recommendations'])) {
-                    // Extract movie_id dari recommendations list
                     return array_column($data['recommendations'], 'movie_id');
                 }
             } else {
-                Log::error('ML API Error: ' . $response->body());
+                Log::error('ML API Error (Recommendation): ' . $response->body());
             }
         } catch (\Exception $e) {
-            Log::error('ML API Exception: ' . $e->getMessage());
+            Log::error('ML API Exception (Recommendation): ' . $e->getMessage());
         }
 
         return [];
+    }
+
+    /**
+     * Menganalisa sentimen dari teks.
+     * Mengembalikan array yang berisi 'sentiment' dan 'confidence'.
+     */
+    public function analyzeSentiment(string $text): array
+    {
+        $response = Http::acceptJson()
+            ->asJson()
+            ->timeout($this->timeout)
+            ->post($this->baseUrl . '/sentiment', [
+                'text' => $text,
+            ]);
+
+        if ($response->failed()) {
+            throw new RuntimeException(
+                'Sentiment ML service gagal: ' . $response->body()
+            );
+        }
+
+        return $response->json();
     }
 
     /**
