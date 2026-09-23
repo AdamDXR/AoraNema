@@ -19,6 +19,14 @@
                 'other' => 'Lainnya',
             ];
             $total = array_sum($summary);
+
+            // Warna hanya pendukung: tiap angka selalu ditulis juga sebagai teks, supaya
+            // tetap terbaca oleh yang sulit membedakan warna.
+            $warnaSentimen = [
+                'positive' => 'bg-usia-semua',
+                'neutral' => 'bg-nema-line',
+                'negative' => 'bg-usia-dewasa',
+            ];
         @endphp
 
         <h1 class="text-2xl sm:text-3xl">Masukan Penonton</h1>
@@ -59,39 +67,70 @@
                 @endif
             </div>
 
+            {{-- Satu batang untuk menjawab: seberapa besar bagian masukan yang bernada negatif? --}}
+            <div class="mt-8 flex h-3 overflow-hidden rounded-full bg-nema-surface-2" role="img"
+                 aria-label="Perbandingan nada masukan: {{ implode(', ', array_map(fn ($k, $l) => ($summary[$k] ?? 0) . ' ' . $l, array_keys($namaSentimen), $namaSentimen)) }}">
+                @foreach ($warnaSentimen as $kunci => $warna)
+                    @php $jumlah = $summary[$kunci] ?? 0; @endphp
+                    @if ($jumlah)
+                        <div class="{{ $warna }}" style="width: {{ $jumlah / $total * 100 }}%"></div>
+                    @endif
+                @endforeach
+            </div>
+
+            <div class="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-nema-muted">
+                @foreach ($warnaSentimen as $kunci => $warna)
+                    <span class="flex items-center gap-2">
+                        <span class="size-3 shrink-0 rounded-sm {{ $warna }}" aria-hidden="true"></span>
+                        {{ $namaSentimen[$kunci] }} {{ $summary[$kunci] ?? 0 }}
+                    </span>
+                @endforeach
+            </div>
+
             @php
-                // Baris per kategori, kolomnya nada masukan. Kategori tanpa masukan tidak ditampilkan.
-                $perKategori = $byCategory->groupBy('category');
+                // Bagian layanan diurutkan dari yang paling banyak masukan negatifnya, karena itu
+                // yang pertama perlu ditindaklanjuti pengelola.
+                $perKategori = $byCategory->groupBy('category')
+                    ->sortByDesc(fn ($baris) => $baris->firstWhere('sentiment', 'negative')->total ?? 0);
+                $terbanyak = $perKategori->max(fn ($baris) => $baris->sum('total')) ?: 1;
             @endphp
 
-            <h2 class="mt-12 text-xl sm:text-2xl">Per bagian layanan</h2>
+            <h2 class="mt-12 text-xl sm:text-2xl">Bagian mana yang paling banyak dikeluhkan?</h2>
 
-            <div class="relative mt-4 overflow-x-auto">
-                <table class="w-full min-w-2xl text-left text-sm">
-                    <thead class="border-b border-nema-line/40 text-nema-muted">
-                        <tr>
-                            <th class="py-3 pr-4 font-normal">Bagian</th>
-                            @foreach ($namaSentimen as $label)
-                                <th class="py-3 pr-4 font-normal">{{ $label }}</th>
+            <ul class="mt-4 space-y-4">
+                @foreach ($perKategori as $kategori => $baris)
+                    @php $jumlahKategori = $baris->sum('total'); @endphp
+
+                    <li>
+                        <div class="flex flex-wrap items-baseline justify-between gap-x-4">
+                            <span>{{ $namaKategori[$kategori] ?? $kategori }}</span>
+                            @php
+                                // Nada yang jumlahnya nol tidak ditulis, supaya tidak ada koma menggantung.
+                                $rincian = collect($namaSentimen)
+                                    ->map(fn ($label, $kunci) => ($baris->firstWhere('sentiment', $kunci)->total ?? 0)
+                                        ? ($baris->firstWhere('sentiment', $kunci)->total . ' ' . mb_strtolower($label))
+                                        : null)
+                                    ->filter()
+                                    ->implode(', ');
+                            @endphp
+
+                            <span class="text-sm text-nema-muted">{{ $rincian }}</span>
+                        </div>
+
+                        {{-- Panjang batang mengikuti jumlah masukan, jadi bagian dengan masukan
+                             paling banyak terlihat paling panjang. --}}
+                        <div class="mt-2 flex h-2.5 overflow-hidden rounded-full bg-nema-surface"
+                             style="width: {{ max(12, $jumlahKategori / $terbanyak * 100) }}%">
+                            @foreach ($warnaSentimen as $kunci => $warna)
+                                @php $n = $baris->firstWhere('sentiment', $kunci)->total ?? 0; @endphp
+                                @if ($n)
+                                    <div class="{{ $warna }}" style="width: {{ $n / $jumlahKategori * 100 }}%"></div>
+                                @endif
                             @endforeach
-                            <th class="py-3 font-normal">Jumlah</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-nema-line/40">
-                        @foreach ($perKategori as $kategori => $baris)
-                            <tr>
-                                <td class="py-4 pr-4">{{ $namaKategori[$kategori] ?? $kategori }}</td>
-                                @foreach (array_keys($namaSentimen) as $kunci)
-                                    <td class="py-4 pr-4 text-nema-muted">
-                                        {{ $baris->firstWhere('sentiment', $kunci)->total ?? 0 }}
-                                    </td>
-                                @endforeach
-                                <td class="py-4">{{ $baris->sum('total') }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
+                        </div>
+                    </li>
+                @endforeach
+            </ul>
 
             <h2 class="mt-12 text-xl sm:text-2xl">Masukan terbaru</h2>
 
